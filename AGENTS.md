@@ -34,6 +34,19 @@ When working in this repo, optimize for accumulation:
 - `wiki/90-meta/`: repo maintenance notes, lint reports, conventions
 - `templates/`: page templates
 
+## Concept page rules（wiki/20-concepts/）
+
+创建概念文档前，先问三个问题：
+
+**1. 信息量够不够独立成文？**
+一个概念是否值得单独一个文件，取决于它有没有足够展开的内容：机制、参数、对比、局限、应用场景。如果只有两三段话，没有可展开的细节，就不要单独成文——把它内联到使用它的文档里，或者作为相关概念文档的一节。
+
+**2. 它归属于哪个更大的主题？**
+如果一个概念在逻辑上是另一个概念的子问题或补充（比如 line-level 去重之于 MinHash），放在那个主题文档里作为一节，而不是平铺成独立文件。归属关系比独立性更重要。
+
+**3. 这是概念本身，还是概念之间的关系？**
+概念文档只说"这个概念是什么"。关系、对比、综述、"为什么选这个而不是那个"——这些属于使用这些概念的上下文文档（论文页、roadmap、comparison 页），不要单独建一个"XXX 对比"或"XXX 汇总"文件。
+
 ## Page rules
 
 Prefer short, structured markdown pages.
@@ -81,6 +94,22 @@ When asked to lint or health-check the wiki, look for:
 6. important concepts referenced repeatedly but lacking their own page
 
 Write lint findings to `wiki/90-meta/`.
+
+## Paper page writing principles
+
+When writing or updating a page in `wiki/30-papers/`, follow these rules:
+
+1. **原文优先，不猜测**：所有关于论文内容的陈述必须能在原文中找到依据。不确定的内容不写，或明确标注"推断"。不用记忆或常识填充原文没说的细节。
+
+2. **引用必须指明**：原文中引用了其他论文的地方，wiki 页面里也要指明对应引用（作者、年份、论文名）。不能把引用来源的内容当作论文本身的贡献来写。
+
+3. **总结原文，不改写原文**：wiki 页面的目标是把原文信息压缩成可快速回顾的结构，而不是换一种说法重新把原文写一遍。优先提炼"这篇论文在这个问题上的立场是什么"，而不是"这篇论文说了什么"。
+
+4. **对核心贡献做当下判断**：每篇论文的核心贡献部分，必须同时包含两个视角：
+   - 当时的贡献：这篇论文在发表时解决了什么问题，为什么重要
+   - 今天（2026）的视角：站在现在看，哪些结论仍然成立，哪些已经被超越或证伪，哪些当时被低估的地方现在看来很重要，哪些当时被高估的地方现在看来有局限
+
+   这两个视角都要有，不能只写历史贡献，也不能用今天的标准否定当时的工作。
 
 ## Style
 

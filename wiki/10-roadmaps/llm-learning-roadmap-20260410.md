@@ -93,9 +93,62 @@
 6. OSWorld  
    https://arxiv.org/abs/2404.07972
 
+### 5. 评测体系本身是怎么演化的
+
+旧 benchmark 饱和之后，评测本身成了一个独立研究方向。这条线值得单独看，因为它决定了"我们现在用什么标准判断模型强不强"。
+
+建议阅读顺序：
+
+1. **MMLU: Measuring Massive Multitask Language Understanding**  
+   链接：https://arxiv.org/abs/2009.03300  
+   看点：理解"多任务知识问答"这类 benchmark 的基本设计，以及为什么它后来会饱和。
+
+2. **HELM: Holistic Evaluation of Language Models**  
+   链接：https://arxiv.org/abs/2211.09110  
+   看点：从单指标评测转向多维度、多场景的系统性评测框架，代表了"评测体系应该怎么设计"的一种成熟思路。
+
+3. **RULER: What's the Real Context Size of Your LLMs?**  
+   链接：https://arxiv.org/abs/2404.06654  
+   看点：一个具体案例——"支持 128K context"不等于"会用 128K context"，展示了 benchmark 设计如何暴露模型的虚报能力。
+
+4. **Humanity's Last Exam**  
+   链接：https://arxiv.org/abs/2501.14249  
+   看点：旧 benchmark 饱和后，评测社区如何构造更难、更抗污染的题目；同时更新你对"前沿模型现在到底强到哪里"的感知。
+
+5. **OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments**  
+   链接：https://arxiv.org/abs/2404.07972  
+   看点：从静态题目转向真实环境执行，代表 agent 评测的新方向——不问"模型知不知道"，而问"模型能不能做到"。
+
+**这条线的核心认知**：benchmark 不是中立的测量工具，它的设计决定了什么能力被看见、什么能力被忽略。读 benchmark 论文，要同时问"它在测什么"和"它测不到什么"。
+
+### 6. Scaling Law：现在还值得看吗
+
+**短答案**：值得，但要带着批判性去看，而不是当成"规律"来记。
+
+Scaling law 的核心问题是：给定计算预算，怎么分配模型参数量和训练 token 数，才能得到最好的模型？这个问题在 2024–2026 年仍然是基础性的，所有认真做预训练的团队都在跑 scaling law 实验。
+
+但"scaling law 论文"这个类别里，质量差异很大：早期工作的结论已经被更新的数据推翻，有些结论只在特定规模范围内成立。读的时候要问：这个结论在什么规模、什么数据、什么架构下得出的？
+
+建议阅读顺序：
+
+1. **Scaling Laws for Neural Language Models**（Kaplan et al., OpenAI，2020）  
+   链接：https://arxiv.org/abs/2001.08361  
+   看点：最早系统研究"模型大小、数据量、计算量"三者关系的论文，提出了幂律关系。结论后来被 Chinchilla 部分推翻，但作为理解 scaling law 概念的起点仍然必读。
+
+2. **Training Compute-Optimal Large Language Models**（Hoffmann et al., DeepMind，2022，即 Chinchilla）  
+   链接：https://arxiv.org/abs/2203.15556  
+   看点：推翻了 Kaplan 的结论——给定计算预算，应该同时增大模型和数据量，而不是只增大模型。"Chinchilla-optimal"成为此后几年预训练的标准参考点。
+
+3. **Scaling Laws for Data Filtering**（DCLM，2024）  
+   链接：https://arxiv.org/abs/2406.11794  
+   看点：把 scaling law 的思路扩展到数据过滤策略——不同过滤方式在不同数据规模下的效果曲线。是 scaling law 方法论在数据工程方向的延伸。
+
+**2026 年的视角**：Kaplan 和 Chinchilla 的结论都是在"用完整的互联网数据训练"的假设下得出的。当训练数据开始包含大量合成数据、高质量精选数据时，这些结论的适用范围变得更模糊。Llama 3 的做法（用小模型实验 + scaling law 预测大模型性能）代表了当前工业界最实用的应用方式，而不是直接套用 Chinchilla 公式。
+
 ## 最该更新的认知
 
 1. 模型变强，现在更多是 post-training + RL + inference-time compute 的故事，不只是 pretraining。
 2. 推理已经从 prompt trick 变成独立训练范式。
 3. 长上下文不能只看支持多长，要看模型会不会用。
 4. agent 研究不要先迷信框架，先看评测和 failure mode。
+5. benchmark 本身也在演化：旧的饱和了，新的在往更难、更真实、更抗污染的方向走。读模型报告时，要先看它用的是什么评测，再看数字。
