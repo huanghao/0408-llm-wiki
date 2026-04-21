@@ -44,6 +44,12 @@ fastText 分类器的结构非常简单：
 2. **subword 特征**：对词做字符 n-gram 分解，`running` 会被拆成 `<run`、`runn`、`unni`、`nning`、`ning>` 等片段，这使模型能处理未登录词和拼写变体
 3. **负采样训练**：训练速度极快，一台普通机器几分钟就能训练出语言识别模型
 
+**subword 的具体实现**：
+
+词向量训练模式下，默认 n-gram 范围是 minn=3、maxn=6（监督分类模式默认关闭 subword，需手动开启）。n-gram 通过 FNV-1a 哈希映射到一个大小为 2,000,000 的 bucket，每个 n-gram 的 embedding ID = `nwords + (hash % bucket)`。哈希时正确处理 UTF-8 多字节字符边界。
+
+负采样默认抽 5 个负例，负例按词频的 0.5 次方平滑后采样（高频词被适当压低）。
+
 ### 速度优势
 
 fastText 在 CPU 上每秒可以处理数十万条文本。相比之下，即使是小型 BERT 模型也慢 2–3 个数量级。
@@ -65,6 +71,8 @@ fastText 语言识别模型（lid.176.bin）
 ```
 
 这个模型支持 176 种语言，是目前最广泛使用的语言识别工具之一。
+
+**lid.176 的训练细节**：训练数据来自 Wikipedia、Tatoeba（多语言例句库）和 SETimes（新闻语料），使用监督模式 + 字符 n-gram（minn=2, maxn=4）+ hierarchical softmax。未压缩版 126 MB，压缩版（product quantization + feature selection）仅 917 KB，精度损失约 0.5%。
 
 ### 质量过滤（Llama 3 的做法）
 
