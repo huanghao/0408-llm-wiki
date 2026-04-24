@@ -23,32 +23,92 @@ Llama 3、C4、RefinedWeb、Dolma 等主流预训练数据集都用了 fastText 
 
 ## 核心原理
 
-### 模型结构
+### 推理：给一段文本打分
 
-fastText 分类器的结构非常简单：
+推理是训练完成后使用模型的过程，以分类 `"机器学习 很 有趣"` 为例：
 
 ```
-输入文本
-  ↓ 分词 + n-gram 特征提取
-  ↓ 词向量查表（embedding lookup）
-  ↓ 对所有词向量取平均（bag-of-words 风格）
-  ↓ 线性层 + softmax
-输出类别概率
+输入文本："机器学习 很 有趣"
+
+步骤1：分词（按空格切词）
+  词列表：["机器学习", "很", "有趣"]
+
+步骤2：每个词展开成字符 n-gram（minn=2, maxn=4），加上词本身
+  "机器学习" → 词本身 + ["机器", "器学", "学习", "机器学", "器学习", "机器学习"]
+  "很"       → 词本身（太短，无 n-gram）
+  "有趣"     → 词本身 + ["有趣"]
+
+步骤3：每个特征通过哈希映射到 embedding ID，查嵌入矩阵取对应行向量
+  "机器学习" → hash → ID 42 → [0.2, -0.1, 0.5, 0.3]
+  "机器"     → hash → ID 61 → [0.1, -0.2, 0.3, 0.2]
+  "很"       → hash → ID  7 → [0.1,  0.4, 0.1, 0.0]
+  ...（其余特征同理）
+
+步骤4：对所有向量取平均（bag-of-words）
+  avg = 所有向量之和 / 特征数  →  [0.15, 0.12, 0.32, 0.18]
+
+步骤5：线性层 + softmax
+  avg × 输出矩阵 B → 各类别得分 → softmax → 概率
+  {"正面": 0.82, "负面": 0.18}
+
+输出：正面（置信度 82%）
 ```
 
 没有卷积、没有 attention、没有 RNN。就是"把词向量平均一下再做线性分类"。
 
-### 为什么这么简单还有效
+**哈希分桶是什么**：
 
-1. **Bag-of-words 在分类任务上出奇地强**：对于语言识别、主题分类这类任务，词的分布本身就包含足够信息，不需要建模词序
-2. **subword 特征**：对词做字符 n-gram 分解，`running` 会被拆成 `<run`、`runn`、`unni`、`nning`、`ning>` 等片段，这使模型能处理未登录词和拼写变体
-3. **负采样训练**：训练速度极快，一台普通机器几分钟就能训练出语言识别模型
+嵌入矩阵的每一行对应一个特征，需要给每个特征分配一个行号（ID）。fastText 用两段空间：
 
-**subword 的具体实现**：
+```
+嵌入矩阵行号：
+  [  0  ~  V-1  ]  ← 词的 ID，V = 词表大小（训练语料里出现过的不重复词的数量）
+  [  V  ~ V+B-1 ]  ← n-gram 的 ID，B = bucket 大小（固定值，默认 200 万）
+```
 
-词向量训练模式下，默认 n-gram 范围是 minn=3、maxn=6（监督分类模式默认关闭 subword，需手动开启）。n-gram 通过 FNV-1a 哈希映射到一个大小为 2,000,000 的 bucket，每个 n-gram 的 embedding ID = `nwords + (hash % bucket)`。哈希时正确处理 UTF-8 多字节字符边界。
+**词表大小 V** 是训练语料里出现过的不重复词的数量，和数据集直接相关（词越多，V 越大）。用 `minCount` 参数过滤低频词可以控制 V 的大小。
 
-负采样默认抽 5 个负例，负例按词频的 0.5 次方平滑后采样（高频词被适当压低）。
+**n-gram ID 为什么要加 V**：词和 n-gram 共用同一张嵌入矩阵，为了不冲突，n-gram 的 ID 从第 V 行开始。`n-gram ID = V + (hash(n-gram) % B)` 的意思是：先用哈希把 n-gram 压缩到 0~B-1 范围内，再偏移 V，确保不和词的 ID 重叠。
+
+**B 是固定的，不随数据变化**：不管语料有多大，n-gram 的种类有多少，bucket 始终是 200 万个槽。不同 n-gram 可能映射到同一个槽（哈希碰撞），但 200 万足够大，实践中影响不大。这样嵌入矩阵总大小始终是 `(V + 200万) × DIM`，可以预先分配内存。
+
+**"词向量查表"的意思**：嵌入矩阵是一张大表，每行对应一个词或 n-gram 的向量。给定 ID，直接取对应行——不做乘法，只是内存寻址，速度极快。查表等价于 one-hot 乘矩阵，原理详见 [Word Embedding → Embedding Lookup 的本质](./word-embedding.md)。
+
+### 训练：让模型学会分类
+
+训练阶段用带标签的数据（如 `"这部电影很好看" → 正面`）更新模型参数。模型结构（对应 `tools/fasttext_demo.py` 里的 `FastTextClassifier`）：
+
+```
+输入：特征 ID 列表，shape (N,)        ← N = 词数 + 字符n-gram数
+
+Embedding(V+B, DIM)                   ← 参数矩阵，shape (V+B, DIM)
+  → 查表，输出 shape (N, DIM)         ← lid.176 用 DIM=16；通用分类常用 DIM=100
+
+mean(dim=0)                           ← 取平均，shape (DIM,)
+
+Linear(DIM, n_classes)                ← 参数矩阵，shape (DIM, C)
+  → 输出 logits，shape (C,)           ← lid.176 的 C=176（176种语言）
+
+CrossEntropyLoss(logits, label)       ← GT 是类别 ID（整数，如语言 ID）
+```
+
+lid.176 实际参数量：V ≈ 数十万词，B = 200万，DIM = 16，C = 176。
+嵌入矩阵约 `(V+200万) × 16`，分类层 `16 × 176`——参数几乎全在嵌入矩阵里。
+
+训练循环：`loss.backward()` 自动反向传播，`optimizer.step()` 更新参数。
+
+**稀疏更新**：每次 forward 只用到几十个特征 ID，反向传播梯度也只流到这几十行，其余行不更新——更新代价和文本长度成正比，而不是词表大小。这是 fastText 在大词表上高速训练的核心原因。原理详见 [Word Embedding → Embedding Lookup 的本质](./word-embedding.md)。
+
+**嵌入矩阵从哪来**：训练开始时全是随机数。通过大量样本的反复更新，正面词的向量逐渐靠近，负面词的向量靠近，两组向量互相远离。详见 [Word Embedding](./word-embedding.md)。
+
+### 两级特征
+
+fastText 同时用两种粒度的特征：
+
+- **词级（word n-gram）**：把相邻词组合成特征，捕捉局部词序，如 `["机器", "学习"]` → bigram `"机器_学习"`。用 `-wordNgrams` 参数控制，默认=1（只用单词）。
+- **字符级（character n-gram / subword）**：在每个词内部切字符片段，`running` → `<run`、`runn`、`ning>`…，目的是处理未登录词和拼写变体。词表外的词（OOV）也能通过共享的字符 n-gram 得到合理的向量。
+
+**为什么叫 subword**：sub = 子，subword = 词的子单元，比词更细粒度但不是单个字符。
 
 ### 速度优势
 
@@ -59,6 +119,8 @@ fastText 在 CPU 上每秒可以处理数十万条文本。相比之下，即使
 - Common Crawl 一个月的快照大约有 200–300 亿个文档
 - 用 fastText 跑语言识别，几台机器几小时就能处理完
 - 用 BERT 类模型，同样任务可能需要几千 GPU 小时
+
+**实测数据**（见 `tools/fasttext_demo.py`）：在 M 系列 Mac CPU 上，用 900 条数据训练一个三分类（英/中/法）语言识别模型只需 0.15 秒，推理吞吐达 **81 万条/秒**，单条延迟 0.001 毫秒。BERT-base 在 GPU 上约 50–200 条/秒，差距约 4000–16000 倍。
 
 ## 在预训练数据管道中的典型用法
 
@@ -83,6 +145,14 @@ Llama 3 训练了两个 fastText 质量分类器：
 
 这两个分类器的输出分数会被用来对文档打分，低分文档被过滤掉。
 
+**标签从哪来，需要多少训练数据**：
+
+标签是自动构造的，不需要人工标注：
+- Wikipedia 引用分类器：Wikipedia 的参考文献列表里有大量外链 URL。把这些 URL 对应的网页文本作为正例，从 Common Crawl 随机采样同等数量的文本作为负例，标签就有了。
+- Books 分类器：直接用书籍数据集（如 Books3、Project Gutenberg）作为正例，随机爬取文本作为负例。
+
+数据量方面，fastText 分类器对训练数据量要求不高，通常几万到几十万条就够用（Llama 3 技术报告没有公开具体数字，但 fastText 的典型用法在 10 万级样本上就能达到很好的效果）。这也是 fastText 相比深度模型的优势之一：数据效率高。
+
 ## 局限性
 
 1. **无法建模词序**：bag-of-words 假设，"猫吃鱼"和"鱼吃猫"对它来说是一样的
@@ -101,6 +171,99 @@ Llama 3 训练了两个 fastText 质量分类器：
 | 规则过滤 | 最快 | 低 | URL 黑名单、字符统计 |
 
 在实际管道里，这几种工具通常是叠加使用的，而不是互斥的。
+
+## 附录：fasttext Python 库使用
+
+安装：`pip install fasttext-wheel`
+
+### 训练分类器
+
+训练文件每行格式：`__label__类名 文本内容`
+
+```python
+import fasttext
+
+# 训练
+model = fasttext.train_supervised(
+    input="train.txt",   # 每行 "__label__xx 文本"
+    epoch=10,
+    lr=0.5,
+    dim=16,
+    wordNgrams=2,        # 加 word bigram 特征
+)
+
+# 推理（单条）
+label, prob = model.predict("this is english text")
+# label = ('__label__en',), prob = array([0.99])
+
+# 推理（批量，更快）
+labels, probs = model.predict(["text one", "text two"])
+
+# 保存 / 加载
+model.save_model("model.bin")
+model = fasttext.load_model("model.bin")
+```
+
+### 加载预训练模型
+
+fastText 官方提供两类预训练模型（https://fasttext.cc/docs/en/english-vectors.html）：
+
+| 模型 | 大小 | 用途 |
+|------|------|------|
+| `lid.176.bin` | 126 MB | 语言识别，支持 176 种语言 |
+| `lid.176.ftz` | 917 KB | 语言识别压缩版，精度损失 <0.5% |
+| `cc.en.300.bin` | ~4 GB | 英文词向量（Common Crawl + Wikipedia，300维） |
+| `cc.zh.300.bin` | ~4 GB | 中文词向量 |
+| `wiki.en.bin` | ~9 GB | 英文词向量（Wikipedia，300维） |
+
+实际使用最多的是 `lid.176.ftz`（不到 1 MB，够用）。词向量模型体积大，通常只在需要迁移学习时才下载。
+
+```python
+model = fasttext.load_model("lid.176.ftz")
+label, prob = model.predict("今天天气很好")
+# label = ('__label__zh',), prob = array([0.999])
+```
+
+### 训练词向量
+
+词向量训练是无监督的，不需要标签，只需要大量文本。流程：
+
+1. 准备语料文件（每行一句话，纯文本）
+2. 选择模型：`skipgram`（给定中心词预测上下文）或 `cbow`（给定上下文预测中心词）
+3. 训练后可以查询任意词的向量，包括 OOV 词（通过字符 n-gram 合成）
+
+```python
+# 训练（skipgram 通常比 cbow 效果好，但慢一些）
+model = fasttext.train_unsupervised(
+    "corpus.txt",
+    model="skipgram",   # 或 "cbow"
+    dim=100,
+    epoch=5,
+    minn=3, maxn=6,     # 字符 n-gram 范围
+)
+
+# 查词向量
+vec = model.get_word_vector("running")     # shape (100,)，词表内
+vec = model.get_word_vector("runing")      # 拼写错误也能得到向量（通过 n-gram）
+
+# 查最近邻
+model.get_nearest_neighbors("猫", k=5)    # 返回最相似的 5 个词
+```
+
+词向量训练的原理详见 [Word Embedding](./word-embedding.md)。
+
+常用参数一览：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `epoch` | 5 | 训练轮数 |
+| `lr` | 0.1 | 学习率 |
+| `dim` | 100 | 向量维度 |
+| `wordNgrams` | 1 | word n-gram 最大阶数 |
+| `minn`/`maxn` | 0/0 | 字符 n-gram 范围（分类默认关闭） |
+| `minCount` | 1 | 词频阈值 |
+
+完整可运行示例见 `tools/fasttext_demo.py` Demo 2。
 
 ## 参考
 
