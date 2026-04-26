@@ -1,5 +1,8 @@
+raw/inbox/deepseek-r1-2501.12948/
+raw/inbox/llama-3-herd-2407.21783/
 raw/inbox/*.toc.json
 .DS_Store
+data/
 ########## Python START ##########
 # Byte-compiled / optimized / DLL files
 __pycache__/

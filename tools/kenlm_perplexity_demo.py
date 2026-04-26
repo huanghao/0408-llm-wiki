@@ -1,103 +1,97 @@
 """
-KenLM 困惑度过滤 Demo
-=====================
+KenLM 困惑度过滤 Demo（使用真实 kenlm 库）
+==========================================
 演示 ccNet 的核心质量过滤思路：用语言模型困惑度区分高质量和低质量文本。
 
-因为 KenLM 需要预训练模型文件（.arpa.bin），这个 demo 用纯 Python 实现
-一个简化的 n-gram 语言模型，逻辑和 KenLM 完全一样，只是规模小。
+用 KenLM 的 lmplz 工具训练语言模型，再用 kenlm Python 库加载模型并打分。
+这里不在 Python 里手写 n-gram 统计、平滑或 ARPA 文件。
+
+依赖：
+  pip install kenlm
+  # lmplz 编译路径：/Users/huanghao/workspace/sources/kenlm/build/bin/lmplz
+  # 编译方法：git clone https://github.com/kpu/kenlm && cd kenlm
+  #           mkdir build && cd build && cmake .. && make -j
 
 运行：python tools/kenlm_perplexity_demo.py
 """
 
-import math
+import os
+import shutil
+import subprocess
 import re
-from collections import defaultdict, Counter
+
+import kenlm
+
+# 工作目录：训练语料和 ARPA 文件写到这里
+DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "data", "kenlm_demo"
+)
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# lmplz 编译路径，优先用这里；其次找 PATH
+LMPLZ_PATH = "/Users/huanghao/workspace/sources/kenlm/build/bin/lmplz"
 
 # ─────────────────────────────────────────────
-# 1. 简化版 n-gram 语言模型
+# 1. 文本归一化 + 调用 KenLM 训练工具
 # ─────────────────────────────────────────────
 
-class NgramLM:
+
+def normalize(text):
+    """和 ccNet 一样的文本归一化"""
+    text = text.lower()
+    text = re.sub(r"\d", "0", text)
+    text = re.sub(r"[^\w\s]", "", text)
+    return text.split()
+
+def require_lmplz():
+    """返回可用的 lmplz 路径，找不到时报清晰错误。"""
+    if os.path.isfile(LMPLZ_PATH):
+        return LMPLZ_PATH
+    found = shutil.which("lmplz")
+    if found:
+        return found
+    raise RuntimeError(
+        f"未找到 lmplz（试过 {LMPLZ_PATH} 和 PATH）。\n"
+        "编译方法：\n"
+        "  git clone https://github.com/kpu/kenlm && cd kenlm\n"
+        "  mkdir build && cd build && cmake .. && make -j\n"
+    )
+
+def train_with_kenlm(corpus, work_dir, order=2):
     """
-    简化版 n-gram 语言模型，实现和 KenLM 相同的核心逻辑：
-    - 统计训练语料里 n-gram 的频率
-    - 用 add-k 平滑处理未见过的 n-gram
-    - 返回 log₁₀ 概率（和 kenlm.model.score() 一致）
+    用 KenLM lmplz 从训练语料生成 ARPA 模型。
+    文件写入 work_dir（默认 data/kenlm_demo/）。
     """
+    corpus_path = os.path.join(work_dir, "train.txt")
+    arpa_path = os.path.join(work_dir, "model.arpa")
 
-    def __init__(self, n=3, k=0.1):
-        self.n = n        # n-gram 阶数（ccNet 用 5-gram）
-        self.k = k        # 平滑参数（add-k smoothing）
-        self.ngram_counts = defaultdict(Counter)  # {context: {word: count}}
-        self.vocab = set()
+    with open(corpus_path, "w", encoding="utf-8") as f:
+        for text in corpus:
+            tokens = normalize(text)
+            if tokens:
+                f.write(" ".join(tokens) + "\n")
 
-    def normalize(self, text):
-        """和 ccNet 一样的文本归一化"""
-        text = text.lower()
-        text = re.sub(r'\d', '0', text)           # 数字替换为 0
-        text = re.sub(r'[^\w\s]', '', text)       # 去掉标点
-        return text.split()
-
-    def train(self, texts):
-        """在文本列表上训练"""
-        for text in texts:
-            tokens = ['<s>'] * (self.n - 1) + self.normalize(text) + ['</s>']
-            self.vocab.update(tokens)
-            for i in range(self.n - 1, len(tokens)):
-                context = tuple(tokens[i - self.n + 1:i])
-                word = tokens[i]
-                self.ngram_counts[context][word] += 1
-        print(f"训练完成：词表 {len(self.vocab)} 个词，"
-              f"{sum(len(v) for v in self.ngram_counts.values())} 个唯一 n-gram")
-
-    def log_prob(self, word, context):
-        """
-        计算 log₁₀ P(word | context)
-        - 词表外的词（OOV）：给一个很低的固定概率（模拟 KenLM 的 OOV 惩罚）
-        - 词表内但 n-gram 未见过：add-k 平滑
-        """
-        # OOV 惩罚：词表外的词概率极低
-        if word not in self.vocab:
-            return math.log10(1e-6)
-
-        ctx_counts = self.ngram_counts[context]
-        count = ctx_counts.get(word, 0) + self.k
-        total = sum(ctx_counts.values()) + self.k * len(self.vocab)
-        if total == 0:
-            return math.log10(1.0 / len(self.vocab))
-        return math.log10(count / total)
-
-    def score(self, text):
-        """
-        计算一段文本的 log₁₀ 概率之和（对应 kenlm.model.score()）
-        返回值是负数，越接近 0 说明文本越"像训练语料"
-        """
-        tokens = ['<s>'] * (self.n - 1) + self.normalize(text) + ['</s>']
-        total_log_prob = 0.0
-        for i in range(self.n - 1, len(tokens)):
-            context = tuple(tokens[i - self.n + 1:i])
-            word = tokens[i]
-            total_log_prob += self.log_prob(word, context)
-        return total_log_prob
-
-    def perplexity(self, text):
-        """
-        计算文本的困惑度，和 ccNet 公式一致：
-        perplexity = 10 ^ (-log_score / length)
-        """
-        tokens = self.normalize(text)
-        if not tokens:
-            return float('inf')
-        length = len(tokens) + 1  # +1 for </s>，和 ccNet 一致
-        log_score = self.score(text)
-        return 10.0 ** (-log_score / length)
-
+    subprocess.run(
+        [
+            require_lmplz(),
+            "-o",
+            str(order),
+            "--text",
+            corpus_path,
+            "--arpa",
+            arpa_path,
+            "--discount_fallback",
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return arpa_path
 
 # ─────────────────────────────────────────────
-# 2. 准备训练数据（模拟"高质量语料"，比如 Wikipedia）
+# 2. 训练语料（模拟 Wikipedia 风格文本）
 # ─────────────────────────────────────────────
 
-# 模拟 Wikipedia 风格的高质量文本（足够大的语料让词表有意义）
 TRAIN_CORPUS = [
     "机器学习是人工智能的一个分支 通过算法让计算机从数据中自动学习规律",
     "深度学习使用多层神经网络来学习数据的层次化表示",
@@ -125,137 +119,116 @@ TRAIN_CORPUS = [
     "随机森林是一种基于决策树的集成学习方法",
     "支持向量机通过找到最优超平面来进行分类",
     "聚类算法可以在没有标签的情况下发现数据结构",
-    "降维技术如 PCA 可以减少数据的维度同时保留主要信息",
+    "降维技术如 pca 可以减少数据的维度同时保留主要信息",
     "交叉验证是评估模型性能的常用方法",
     "超参数调优对模型最终性能有重要影响",
     "模型压缩技术可以减小模型大小同时保持较好性能",
-    "知识蒸馏将大模型的知识迁移到小模型中",
-    "联邦学习允许多个参与方在不共享原始数据的情况下训练模型",
-    "对抗样本是经过微小扰动后能让模型产生错误预测的输入",
-    "可解释性是评估机器学习模型的重要维度之一",
-    "偏差和方差是影响模型误差的两个主要来源",
-    "激活函数引入非线性使神经网络能够学习复杂模式",
-    "反向传播算法通过链式法则计算各层的梯度",
-    "学习率是控制参数更新步长的重要超参数",
-    "批量大小影响训练的稳定性和收敛速度",
-    "dropout 在训练时随机丢弃神经元以防止过拟合",
-] * 8  # 重复 8 次增加样本量
+] * 8
 
 # ─────────────────────────────────────────────
-# 3. 训练语言模型
+# 3. 训练模型（写 ARPA → kenlm 加载）
 # ─────────────────────────────────────────────
 
 print("=" * 60)
-print("KenLM 困惑度过滤 Demo")
-print("（用简化版 n-gram LM 演示，逻辑和 ccNet 完全一致）")
+print("KenLM 困惑度过滤 Demo（使用真实 kenlm 库）")
 print("=" * 60)
 print()
 
-lm = NgramLM(n=3, k=0.01)
-print(f"在 {len(TRAIN_CORPUS)} 条百科风格文本上训练 {lm.n}-gram 语言模型...")
-lm.train(TRAIN_CORPUS)
-print()
+print(f"从 {len(TRAIN_CORPUS)} 条语料训练 bigram 模型...")
+print(f"工作目录：{DATA_DIR}")
+arpa_path = train_with_kenlm(TRAIN_CORPUS, DATA_DIR, order=3)
+
+# 用 kenlm.Model 加载 KenLM 生成的 ARPA 文件
+model = kenlm.Model(arpa_path)
+print(f"模型加载完成，阶数：{model.order}-gram\n")
 
 # ─────────────────────────────────────────────
-# 4. 对不同质量的文本计算困惑度
+# 4. 用 kenlm API 打分
+# ─────────────────────────────────────────────
+
+
+def score_text(text):
+    """用 kenlm 计算 log P，返回 (log_score, length)"""
+    tokens = normalize(text)
+    if not tokens:
+        return 0.0, 1
+    # model.score() 接受空格分隔的字符串，bos/eos 控制是否加句首句尾符
+    log_score = model.score(" ".join(tokens), bos=True, eos=True)
+    length = len(tokens) + 1  # +1 for </s>，和 ccNet 一致
+    return log_score, length
+
+
+def perplexity(text):
+    log_score, length = score_text(text)
+    return 10.0 ** (-log_score / length)
+
+
+# ─────────────────────────────────────────────
+# 5. 逐词打分（展示 kenlm 的 full_scores API）
+# ─────────────────────────────────────────────
+
+print("── 逐词打分（kenlm.full_scores）──")
+demo_sent = "深度学习使用神经网络"
+tokens = normalize(demo_sent)
+print(f"\n句子：「{demo_sent}」 → tokens: {tokens}")
+print(f"{'词':<10} {'log₁₀ P':>10}  {'ngram_length':>12}")
+print("-" * 40)
+total_logp = 0.0
+for (logp, ngram_len, oov), word in zip(
+    model.full_scores(" ".join(tokens), bos=True, eos=True), tokens + ["</s>"]
+):
+    total_logp += logp
+    oov_mark = " ← OOV" if oov else ""
+    print(f"  {word:<8} {logp:>10.4f}  {ngram_len:>12}{oov_mark}")
+print(f"  {'合计':<8} {total_logp:>10.4f}")
+print(
+    f"  perplexity = 10^({-total_logp:.2f} / {len(tokens) + 1}) = {perplexity(demo_sent):.1f}\n"
+)
+
+# ─────────────────────────────────────────────
+# 6. 不同质量文本的困惑度对比
 # ─────────────────────────────────────────────
 
 TEST_TEXTS = [
-    # 高质量：和训练语料风格相近
     ("高质量-百科", "深度学习模型通过大规模数据训练来学习特征表示"),
     ("高质量-百科", "注意力机制是 transformer 模型的核心组成部分"),
-    ("高质量-百科", "梯度下降算法通过计算损失函数的梯度来更新模型参数"),
-
-    # 中等质量：口语化，但语法正确
-    ("中等-口语", "这个模型效果还不错，跑起来也挺快的"),
-    ("中等-口语", "今天学了一下机器学习，感觉挺有意思的"),
-
-    # 低质量：boilerplate 模板文字
+    ("中等-口语", "这个模型效果还不错跑起来也挺快的"),
     ("低质量-版权", "版权所有 保留所有权利 未经授权禁止转载"),
     ("低质量-导航", "首页 关于我们 联系方式 隐私政策 使用条款"),
-    ("低质量-广告", "点击这里订阅我们的newsletter 获取最新优惠信息"),
-
-    # 极低质量：乱码/随机字符
-    ("极低-乱码", "asdf jkl qwer zxcv 1234 5678 abcd efgh"),
+    ("极低-乱码", "asdf jkl qwer zxcv 0000 5678 efgh"),
     ("极低-重复", "的的的的的的的的的的的的的的的的的的的的的"),
 ]
 
+print("── 困惑度对比 ──\n")
 print(f"{'类型':<12} {'困惑度':>10}  文本")
-print("-" * 70)
+print("-" * 65)
 
 results = []
 for label, text in TEST_TEXTS:
-    pp = lm.perplexity(text)
+    pp = perplexity(text)
     results.append((label, pp, text))
-    # 困惑度太大时显示为 ∞
     pp_str = f"{pp:>10.1f}" if pp < 1e6 else f"{'∞':>10}"
-    print(f"{label:<12} {pp_str}  {text[:35]}...")
+    print(f"{label:<12} {pp_str}  {text[:35]}")
 
 # ─────────────────────────────────────────────
-# 5. 模拟 ccNet 的分段过滤
+# 7. 模拟 ccNet 分段策略
 # ─────────────────────────────────────────────
 
 print()
-print("=" * 60)
-print("模拟 ccNet 分段策略（head/middle/tail）")
-print("=" * 60)
+print("── ccNet 分段策略（head/middle/tail）──\n")
 
-# 计算百分位阈值（ccNet 用第 30 和第 60 百分位）
-import statistics
-valid_pps = [pp for _, pp, _ in results if pp < 1e6]
-valid_pps_sorted = sorted(valid_pps)
-
-if len(valid_pps_sorted) >= 3:
-    p30_idx = int(len(valid_pps_sorted) * 0.3)
-    p60_idx = int(len(valid_pps_sorted) * 0.6)
-    threshold_30 = valid_pps_sorted[p30_idx]
-    threshold_60 = valid_pps_sorted[p60_idx]
-else:
-    threshold_30 = 200
-    threshold_60 = 500
-
-print(f"\n第 30 百分位阈值（head/middle 边界）：{threshold_30:.1f}")
-print(f"第 60 百分位阈值（middle/tail 边界）：{threshold_60:.1f}")
-print()
+valid_pps = sorted(pp for _, pp, _ in results if pp < 1e6)
+p30 = valid_pps[int(len(valid_pps) * 0.3)]
+p60 = valid_pps[int(len(valid_pps) * 0.6)]
+print(f"第 30 百分位（head/middle 边界）：{p30:.1f}")
+print(f"第 60 百分位（middle/tail 边界）：{p60:.1f}\n")
 
 for label, pp, text in results:
-    if pp <= threshold_30:
-        bucket = "HEAD  ✓ 保留（最高质量）"
-    elif pp <= threshold_60:
-        bucket = "MIDDLE  ~ 可选保留"
+    if pp <= p30:
+        bucket = "HEAD   ✓"
+    elif pp <= p60:
+        bucket = "MIDDLE ~"
     else:
-        bucket = "TAIL  ✗ 过滤掉"
+        bucket = "TAIL   ✗"
     pp_str = f"{pp:.1f}" if pp < 1e6 else "∞"
     print(f"  [{bucket}]  pp={pp_str:>8}  {label}")
-
-# ─────────────────────────────────────────────
-# 6. 直觉演示：log probability 是什么
-# ─────────────────────────────────────────────
-
-print()
-print("=" * 60)
-print("直觉演示：log probability 是什么")
-print("=" * 60)
-
-demo_texts = [
-    "深度学习使用神经网络来学习数据",
-    "asdf qwer zxcv 1234",
-]
-for text in demo_texts:
-    tokens = lm.normalize(text)
-    log_score = lm.score(text)
-    length = len(tokens) + 1
-    pp = lm.perplexity(text)
-    prob_approx = 10 ** log_score  # 整段文本的概率（极小数）
-
-    print(f"\n文本：'{text}'")
-    print(f"  词数（length）：{length}")
-    print(f"  log₁₀ P（整段）：{log_score:.2f}  →  P ≈ 10^{log_score:.0f}（极小数，用对数避免下溢）")
-    print(f"  每词平均 log₁₀ P：{log_score/length:.2f}")
-    print(f"  困惑度 = 10^(-{log_score/length:.2f}) = {pp:.1f}")
-
-print()
-print("结论：")
-print("  - log probability 是负数，越接近 0 说明文本越像训练语料")
-print("  - 困惑度是 log probability 的指数还原，值越低越好")
-print("  - ccNet 用 Wikipedia 文本训练 LM，困惑度低 = 像 Wikipedia = 高质量")
