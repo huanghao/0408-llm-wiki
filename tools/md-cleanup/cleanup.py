@@ -155,6 +155,42 @@ def classify(para: Paragraph) -> ArtifactType:
     return None
 
 
+# Rule weights for confidence scoring (used by toc_anchored_cleanup)
+_RULE_WEIGHTS: list[tuple[str, float]] = [
+    ("isolated_punctuation", 1.0),
+    ("char_noise_lines",     1.0),
+    ("no_space_long_line",   0.8),
+    ("digit_led_long_line",  0.8),
+    ("short_digit_lines",    0.6),
+    ("low_alpha",            0.6),
+    ("high_cv_digit",        0.6),
+]
+
+
+def rule_confidence(para: Paragraph) -> float:
+    """Return max weight among all triggered rules (0 if none)."""
+    text = para.text.strip()
+    if not text:
+        return 0.0
+    hits = []
+    if is_isolated_punctuation(para):
+        hits.append(1.0)
+    if para.num_lines >= 4 and single_char_lines_ratio(para) > 0.6:
+        hits.append(1.0)
+    if has_no_space_long_line(para):
+        hits.append(0.8)
+    if has_digit_led_long_line(para):
+        hits.append(0.8)
+    avg_len = avg_line_len(para)
+    if avg_len < 14 and para.num_lines >= 4 and digit_ratio(para) > 0.3:
+        hits.append(0.6)
+    if alpha_ratio(para) < 0.3 and para.num_lines >= 3:
+        hits.append(0.6)
+    if line_len_cv(para) > 2.0 and digit_ratio(para) > 0.2 and para.num_lines >= 5:
+        hits.append(0.6)
+    return max(hits) if hits else 0.0
+
+
 # ---------- segmentation ----------
 
 def split_paragraphs(text: str) -> list[Paragraph]:

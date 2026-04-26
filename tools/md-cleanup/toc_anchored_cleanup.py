@@ -2,11 +2,17 @@
 """
 TOC-anchored cleanup for markitdown output.
 
-Pipeline (in order):
-  1. toc       — PDF TOC + page numbers: identify headings, drop page numbers
-  2. rule      — digit/symbol heuristics: char noise, figure/table data
-  3. kenlm     — perplexity filter: word-based table fragments
-  4. sandwich  — context: short paragraphs between two artifact anchors
+Pipeline:
+  1. toc      — PDF TOC + page numbers: exact structural match, no scoring
+  2. scoring  — three signals combined; paragraph deleted only if total ≥ threshold
+       A. rule_score    : max weight of triggered heuristic rules (0–1)
+       B. pp_score      : perplexity rank within document (0–1, adaptive)
+       C. sandwich_score: 0.5 if single-line short para between two anchors
+     final = max(rule_score, pp_score) * 0.7 + sandwich_score * 0.3
+     delete if final >= 0.5
+
+Adaptive threshold: KenLM score uses within-document perplexity rank,
+not a fixed value. Avoids miscalibration across different paper styles.
 
 Usage:
     python tools/md-cleanup/toc_anchored_cleanup.py <input.md> --pdf <file.pdf>
@@ -26,6 +32,10 @@ import cleanup as rule_mod
 import kenlm_cleanup as lm_mod
 import toc_match as toc_mod
 
+DELETE_THRESHOLD = 0.5
+SANDWICH_WEIGHT  = 0.3   # sandwich is auxiliary; alone it scores 0.5*0.3 = 0.15 < threshold
+MAIN_WEIGHT      = 0.7   # rule or kenlm (whichever is stronger)
+
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,12 +53,12 @@ def is_page_number(para: rule_mod.Paragraph) -> bool:
 _SENTENCE_END = re.compile(r'[.!?]["\']?$')
 
 
-def is_small(para: rule_mod.Paragraph) -> bool:
-    """Short, non-sentence paragraph — sandwich candidate."""
+def is_sandwich_candidate(para: rule_mod.Paragraph) -> bool:
+    """Single-line, short, non-sentence paragraph."""
+    if para.num_lines > 1:
+        return False
     words = para.text.split()
     if len(words) > 20:
-        return False
-    if para.num_lines > 1:          # multi-line = likely real content (e.g. paper title)
         return False
     if _SENTENCE_END.search(para.lines[-1].strip()) and len(words) > 6:
         return False
@@ -57,100 +67,124 @@ def is_small(para: rule_mod.Paragraph) -> bool:
 
 # ── main pipeline ─────────────────────────────────────────────────────────────
 
-def process(text: str, toc: list[dict], model,
-            threshold: float = lm_mod.DEFAULT_THRESHOLD) -> tuple[str, list[dict]]:
+def process(text: str, toc: list[dict], model) -> tuple[str, list[dict]]:
     """
     Returns (cleaned_text, log_records).
 
-    Each log record:
-      {lineno, label, pp, preview}
-      label: 'readable' | 'toc:heading:N' | 'toc:page_number' |
-             'rule:<type>' | 'kenlm' | 'sandwich'
+    Log record fields:
+      lineno   : line number in original file (1-based)
+      label    : decision — 'readable' | 'toc:heading:N' | 'toc:page_number' | 'artifact'
+      score    : final combined score (None for toc decisions)
+      rule     : rule_score component
+      pp_rank  : pp_score component (perplexity rank 0-1)
+      sandwich : sandwich_score component
+      pp       : raw perplexity value
+      preview  : first 120 chars of paragraph text
+    Last record: {"stats": {...}}
     """
     paragraphs = rule_mod.split_paragraphs(text)
     n = len(paragraphs)
-    labels = [None] * n
-    pp_values = [0.0] * n
 
-    # ── 1. TOC + page numbers ──
+    # ── Step 1: TOC + page numbers (exact, no scoring) ──
     heading_matches = toc_mod.match_headings(toc, paragraphs)
+    toc_labels = {}   # para index → 'toc:heading:N' or 'toc:page_number'
     for i, para in enumerate(paragraphs):
         if is_page_number(para):
-            labels[i] = "toc:page_number"
+            toc_labels[i] = "toc:page_number"
         elif i in heading_matches:
-            labels[i] = f"toc:heading:{heading_matches[i].depth}"
+            toc_labels[i] = f"toc:heading:{heading_matches[i].depth}"
 
-    # ── 2. rule classifier ──
-    for i, para in enumerate(paragraphs):
-        if labels[i] is not None:
-            continue
-        art = rule_mod.classify(para)
-        if art:
-            labels[i] = f"rule:{art}"
+    # ── Compute raw signals for all non-toc paragraphs ──
+    rule_scores = []
+    raw_pp      = []
+    for para in paragraphs:
+        rule_scores.append(rule_mod.rule_confidence(para))
+        raw_pp.append(lm_mod.perplexity(model, para.text))
 
-    # ── 3. KenLM perplexity ──
-    for i, para in enumerate(paragraphs):
-        pp = lm_mod.perplexity(model, para.text)
-        pp_values[i] = pp
-        if labels[i] is None and pp > threshold:
-            labels[i] = "kenlm"
+    # Adaptive pp_score: rank within document
+    sorted_pp = sorted(raw_pp)
+    def pp_rank(pp_val: float) -> float:
+        # fraction of paragraphs with lower perplexity
+        lo = 0
+        for v in sorted_pp:
+            if v < pp_val:
+                lo += 1
+        return lo / n
 
-    # ── 4. sandwich detection ──
-    def is_anchor(lbl):
-        return lbl is not None
+    pp_scores = [pp_rank(pp) for pp in raw_pp]
 
+    # ── Sandwich pass: needs anchor map ──
+    # Anchors = toc labels + paragraphs whose combined score is already high
+    # We do a quick pre-pass with rule+pp only to seed anchors for sandwich
+    pre_scores = [
+        max(rule_scores[i], pp_scores[i]) * MAIN_WEIGHT
+        for i in range(n)
+    ]
+
+    def is_anchor(i: int) -> bool:
+        return i in toc_labels or pre_scores[i] >= DELETE_THRESHOLD
+
+    sandwich_scores = [0.0] * n
     for i in range(n):
-        if labels[i] is not None:
+        if i in toc_labels:
             continue
-        if not is_small(paragraphs[i]):
+        if not is_sandwich_candidate(paragraphs[i]):
             continue
-        prev_anchor = next(
-            (j for j in range(i - 1, -1, -1)
-             if is_anchor(labels[j]) or not is_small(paragraphs[j])),
-            None)
-        next_anchor = next(
-            (j for j in range(i + 1, n)
-             if is_anchor(labels[j]) or not is_small(paragraphs[j])),
-            None)
-        if (prev_anchor is not None and is_anchor(labels[prev_anchor]) and
-                next_anchor is not None and is_anchor(labels[next_anchor])):
-            labels[i] = "sandwich"
+        prev = next((j for j in range(i-1, -1, -1)
+                     if is_anchor(j) or not is_sandwich_candidate(paragraphs[j])), None)
+        nxt  = next((j for j in range(i+1, n)
+                     if is_anchor(j) or not is_sandwich_candidate(paragraphs[j])), None)
+        if prev is not None and is_anchor(prev) and nxt is not None and is_anchor(nxt):
+            sandwich_scores[i] = 0.5
 
-    # ── build output + log ──
+    # ── Final scores + decisions ──
     output_parts = []
-    log_records = []
+    log_records  = []
     stats: dict[str, int] = {}
 
-    for i, (para, label, pp) in enumerate(zip(paragraphs, labels, pp_values)):
+    for i, para in enumerate(paragraphs):
         preview = para.text[:120].replace("\n", "↵")
+        pp      = raw_pp[i]
+        rs      = rule_scores[i]
+        ps      = pp_scores[i]
+        ss      = sandwich_scores[i]
+        final   = max(rs, ps) * MAIN_WEIGHT + ss * SANDWICH_WEIGHT
 
-        if label is None:
-            output_parts.append(para.text)
-            final_label = "readable"
+        if i in toc_labels:
+            label = toc_labels[i]
+            if label.startswith("toc:heading:"):
+                depth = int(label.split(":")[-1])
+                match = heading_matches.get(i)
+                heading_text = (f"{match.number} {match.title}" if match
+                                else para.lines[0].strip())
+                output_parts.append("#" * depth + " " + heading_text)
+            # page_number: silently dropped
+            log_records.append({
+                "lineno": para.start_lineno, "label": label,
+                "score": None, "rule": None, "pp_rank": None,
+                "sandwich": None, "pp": round(pp), "preview": preview,
+            })
+            stats[label] = stats.get(label, 0) + 1
 
-        elif label.startswith("toc:heading:"):
-            depth = int(label.split(":")[-1])
-            match = heading_matches.get(i)
-            heading_text = (f"{match.number} {match.title}" if match
-                            else para.lines[0].strip())
-            output_parts.append("#" * depth + " " + heading_text)
-            final_label = label
-
-        elif label == "toc:page_number":
-            final_label = label  # silently dropped
+        elif final >= DELETE_THRESHOLD:
+            output_parts.append("<!-- [LAYOUT_ARTIFACT] -->")
+            log_records.append({
+                "lineno": para.start_lineno, "label": "artifact",
+                "score": round(final, 3), "rule": round(rs, 3),
+                "pp_rank": round(ps, 3), "sandwich": round(ss, 3),
+                "pp": round(pp), "preview": preview,
+            })
+            stats["artifact"] = stats.get("artifact", 0) + 1
 
         else:
-            tag = label.replace("rule:", "")
-            output_parts.append(f"<!-- [LAYOUT_ARTIFACT: {tag}] -->")
-            final_label = label
-
-        stats[final_label] = stats.get(final_label, 0) + 1
-        log_records.append({
-            "lineno": para.start_lineno,
-            "label": final_label,
-            "pp": round(pp) if pp else None,
-            "preview": preview,
-        })
+            output_parts.append(para.text)
+            log_records.append({
+                "lineno": para.start_lineno, "label": "readable",
+                "score": round(final, 3), "rule": round(rs, 3),
+                "pp_rank": round(ps, 3), "sandwich": round(ss, 3),
+                "pp": round(pp), "preview": preview,
+            })
+            stats["readable"] = stats.get("readable", 0) + 1
 
     log_records.append({"stats": stats})
     return "\n\n".join(output_parts) + "\n", log_records
@@ -161,16 +195,14 @@ def main():
     parser.add_argument("input")
     parser.add_argument("--pdf", required=True)
     parser.add_argument("-o", "--output")
-    parser.add_argument("--log", help="Write JSONL decision log to this file")
-    parser.add_argument("-t", "--threshold", type=float, default=lm_mod.DEFAULT_THRESHOLD)
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Print non-readable decisions to stderr")
+    parser.add_argument("--log", help="Write JSONL decision log")
+    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
-    toc = load_toc(args.pdf)
+    toc   = load_toc(args.pdf)
     model = lm_mod.load_model()
-    text = Path(args.input).read_text(encoding="utf-8")
-    result, log_records = process(text, toc, model, threshold=args.threshold)
+    text  = Path(args.input).read_text(encoding="utf-8")
+    result, log_records = process(text, toc, model)
 
     if args.output:
         Path(args.output).write_text(result, encoding="utf-8")
@@ -181,11 +213,17 @@ def main():
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
     if args.verbose:
-        for rec in log_records[:-1]:  # skip stats line
+        for rec in log_records[:-1]:
             if rec["label"] not in ("readable", "toc:page_number"):
-                print(f"  [{rec['label']:24s}] line {rec['lineno']:4d}"
-                      f" pp={rec['pp'] or 0:8.0f}: {rec['preview']!r}",
-                      file=sys.stderr)
+                print(
+                    f"  [{rec['label']:20s}] line {rec['lineno']:4d}"
+                    f" score={rec['score'] or '—':>5}  "
+                    f"rule={rec['rule'] or '—':>4}  "
+                    f"pp_rank={rec['pp_rank'] or '—':>4}  "
+                    f"sw={rec['sandwich'] or '—':>3}  "
+                    f"{rec['preview'][:60]!r}",
+                    file=sys.stderr,
+                )
         print(f"\nStats: {log_records[-1]['stats']}", file=sys.stderr)
 
     if not args.output:
