@@ -18,7 +18,7 @@ OUT_DIR = Path(__file__).parent.parent.parent / "data" / "kenlm_academic"
 ARPA_PATH = OUT_DIR / "en_academic.arpa"
 BINARY_PATH = OUT_DIR / "en_academic.binary"
 CORPUS_PATH = OUT_DIR / "train.txt"
-N_DOCS = 5000
+N_DOCS = 50000
 ORDER = 3
 
 
@@ -32,7 +32,7 @@ def normalize(text: str) -> str:
 def build_corpus():
     print(f"Loading {N_DOCS} arXiv abstracts...")
     from datasets import load_dataset
-    ds = load_dataset("ccdv/arxiv-summarization", split=f"train[:{N_DOCS}]", trust_remote_code=True)
+    ds = load_dataset("ccdv/arxiv-summarization", split=f"train[:{N_DOCS}]")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with open(CORPUS_PATH, "w") as f:

@@ -32,7 +32,7 @@ import cleanup as rule_mod
 import kenlm_cleanup as lm_mod
 import toc_match as toc_mod
 
-DELETE_THRESHOLD = 0.5
+DELETE_THRESHOLD = 0.55
 SANDWICH_WEIGHT  = 0.3   # sandwich is auxiliary; alone it scores 0.5*0.3 = 0.15 < threshold
 MAIN_WEIGHT      = 0.7   # rule or kenlm (whichever is stronger)
 
@@ -51,6 +51,14 @@ def is_page_number(para: rule_mod.Paragraph) -> bool:
 
 
 _SENTENCE_END = re.compile(r'[.!?]["\']?$')
+
+
+_FIGURE_TABLE_RE = re.compile(r"^(Figure|Table|Fig\.?)\s+\d+", re.IGNORECASE)
+
+
+def is_caption(para: rule_mod.Paragraph) -> bool:
+    """Figure/Table captions are readable content, never artifacts."""
+    return para.num_lines >= 1 and bool(_FIGURE_TABLE_RE.match(para.lines[0].strip()))
 
 
 def is_sandwich_candidate(para: rule_mod.Paragraph) -> bool:
@@ -166,7 +174,7 @@ def process(text: str, toc: list[dict], model) -> tuple[str, list[dict]]:
             })
             stats[label] = stats.get(label, 0) + 1
 
-        elif final >= DELETE_THRESHOLD:
+        elif final >= DELETE_THRESHOLD and not is_caption(para):
             output_parts.append("<!-- [LAYOUT_ARTIFACT] -->")
             log_records.append({
                 "lineno": para.start_lineno, "label": "artifact",
