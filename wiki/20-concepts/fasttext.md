@@ -76,21 +76,77 @@ Llama 3、C4、RefinedWeb、Dolma 等主流预训练数据集都用了 fastText 
 
 ### 训练：让模型学会分类
 
-训练阶段用带标签的数据（如 `"这部电影很好看" → 正面`）更新模型参数。模型结构（对应 `tools/fasttext_demo.py` 里的 `FastTextClassifier`）：
+训练阶段用带标签的数据（如 `"这部电影很好看" → 正面`）更新模型参数。
 
+**PyTorch 伪代码**：
+
+```python
+import torch
+import torch.nn as nn
+
+class FastTextClassifier(nn.Module):
+    def __init__(self, vocab_size, bucket_size, dim, n_classes):
+        super().__init__()
+        # Embedding 层：本质是一个可学习的查找表，shape (V+B, DIM)
+        # 训练时等价于 Linear(V+B, DIM, bias=False)，但推理时只做数组下标操作
+        self.embedding = nn.Embedding(vocab_size + bucket_size, dim)
+        # 分类头：线性层，无激活函数（CrossEntropyLoss 内部已包含 softmax）
+        self.classifier = nn.Linear(dim, n_classes)
+
+    def forward(self, ids):          # ids: (N,)  N = 词数 + 字符n-gram数
+        x = self.embedding(ids)      # (N, DIM)  查表
+        x = x.mean(dim=0)            # (DIM,)    取平均
+        logits = self.classifier(x)  # (C,)      线性变换，无激活
+        return logits
+
+# 训练
+model = FastTextClassifier(V, B=2_000_000, dim=16, n_classes=176)
+loss_fn = nn.CrossEntropyLoss()      # 内部做 softmax + log + NLL
+optimizer = torch.optim.Adam(model.parameters())
+
+logits = model(ids)                  # 前向
+loss = loss_fn(logits.unsqueeze(0), label)  # 计算损失
+loss.backward()                      # 反向传播
+optimizer.step()                     # 更新参数
 ```
-输入：特征 ID 列表，shape (N,)        ← N = 词数 + 字符n-gram数
 
-Embedding(V+B, DIM)                   ← 参数矩阵，shape (V+B, DIM)
-  → 查表，输出 shape (N, DIM)         ← lid.176 用 DIM=16；通用分类常用 DIM=100
+**Embedding 层的本质**：
 
-mean(dim=0)                           ← 取平均，shape (DIM,)
+- **训练时**：逻辑上等价于 `Linear(V+B, DIM, bias=False)`，即一个矩阵乘法——one-hot 向量乘以权重矩阵，梯度可以反向传播更新权重。
+- **推理时**：实现上只做数组下标操作 `weight[id]`，直接取矩阵对应行，不做任何乘法，极快。
+- **两者数学等价**，但推理时的实现更高效。PyTorch 的 `nn.Embedding` 就是这样实现的。
 
-Linear(DIM, n_classes)                ← 参数矩阵，shape (DIM, C)
-  → 输出 logits，shape (C,)           ← lid.176 的 C=176（176种语言）
+**分类头要不要激活函数**：
 
-CrossEntropyLoss(logits, label)       ← GT 是类别 ID（整数，如语言 ID）
-```
+分类头 `Linear(DIM, C)` **不加激活函数**，直接输出 logits（未归一化的分数）。激活函数（softmax）放在 loss 函数里：`CrossEntropyLoss = softmax + log + NLLLoss`。这样做数值更稳定（避免 softmax 上溢/下溢），是 PyTorch 的标准做法。推理时如果需要概率，用 `F.softmax(logits)` 手动加。
+
+**DIM 多大合适**：
+
+DIM=100 对于一般分类任务完全够用，fastText 的官方 benchmark 多用 100–300。设置原则：
+
+| 场景 | 推荐 DIM | 理由 |
+|------|----------|------|
+| 语言识别（lid.176） | 16 | 任务简单，语言间差异大，低维足够 |
+| 通用文本分类 | 100–200 | 平衡精度和速度 |
+| 质量过滤分类器 | 100 | DCLM/Llama 3 的实践 |
+| 词向量（无监督） | 300 | 需要捕捉更细腻的语义 |
+
+DIM 越大，表达能力越强，但参数量和推理时间线性增加。fastText 的优势在于 DIM 可以很小（16–100）仍然有效，因为任务本身不复杂。
+
+**OH-2.5 和 ELI5 分类器是什么**：
+
+DCLM 里提到的 OH-2.5 和 ELI5 是两个 fastText 分类器的**训练数据来源**，不是两种不同的模型架构。它们都是"embedding + 取平均 + 线性分类头"这个结构，参数规模也相近（DIM≈100，V+B≈200万），区别只在于：
+
+| | OH-2.5 分类器 | ELI5 分类器 |
+|--|--------------|-------------|
+| 正例来源 | OpenHermes 2.5（高质量指令微调数据，问答/对话） | Reddit r/explainlikeimfive（用简单语言解释复杂概念） |
+| 负例 | 随机网页文本 | 随机网页文本 |
+| 学到的"质量"定义 | 像精心整理的问答文本 | 像通俗易懂的解释性文本 |
+| 训练样本量 | 约数十万条 | 约数十万条 |
+
+两个分类器学到的"高质量"定义略有不同，混合使用可以覆盖更广的质量维度。DCLM 的实验发现 OH-2.5+ELI5 混合的效果比单独使用任一个都好。
+
+之所以都叫"fastText 分类器"，是因为模型结构完全相同，只是训练数据不同——这正是 fastText 的一个优点：换一批训练数据就能得到针对不同目标的分类器，成本极低。
 
 lid.176 实际参数量：V ≈ 数十万词，B = 200万，DIM = 16，C = 176。
 嵌入矩阵约 `(V+200万) × 16`，分类层 `16 × 176`——参数几乎全在嵌入矩阵里。
