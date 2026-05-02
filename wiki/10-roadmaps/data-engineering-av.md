@@ -10,7 +10,7 @@
 
 ## 数据集和标注 pipeline
 
-2. **nuScenes: A multimodal dataset for autonomous driving**（Caesar et al., 2020）  
+2. **[nuScenes: A multimodal dataset for autonomous driving](../30-papers/nuscenes-1903.11027.md)**（Caesar et al., 2020）  
    链接：https://arxiv.org/abs/1903.11027  
    看点：数据集论文本身就是工程细节的最佳来源——传感器配置、标注流程、质量控制。
 
@@ -43,7 +43,7 @@
 | 合成数据 | LLM 生成文本（Phi） | 生成模型合成场景（DriveDreamer） |
 | 少量高质量 | LIMO/LIMA | Tesla 数据引擎精选 hard case |
 
-先把 LLM 这条线（DoReMi + Phi-1/3 + LIMA）读完，再看自动驾驶，会发现是同一套思维的不同模态应用。
+先把 LLM 这条线（[DoReMi](../30-papers/doremi-2305.10429.md) + [Phi-1](../30-papers/phi-1-2306.11644.md)/[Phi-3](../30-papers/phi-2-phi-3.md) + [LIMO](../30-papers/limo-2502.03387.md)）读完，再看自动驾驶，会发现是同一套思维的不同模态应用。
 
 ### 展开：自动驾驶的质量过滤——模型不确定性 + 人工复核
 

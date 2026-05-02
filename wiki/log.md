@@ -45,3 +45,81 @@ Working directory: `20250421-llama3-exp/`
 - 矢量图提取（需 `pdftoppm` + 坐标裁剪，效果待评估）
 - 表格还原（PDF 表格提取质量差，需专项处理）
 - 参考引用关联（自研 regex 准确率约 82%，非关键路径）
+
+## [2026-05-01] update | Refresh open-weight landscape page from comments
+
+- Rewrote `wiki/30-papers/open-weight-models-landscape.md` to extend the timeline through `2026-05-01`.
+- Added a dedicated section for coding-model evolution, centered on `Qwen2.5-Coder` and `Qwen3-Coder`.
+- Split quantization into a standalone concept page: `wiki/20-concepts/quantization.md`.
+- Updated `wiki/index.md` to include both the new concept page and the refreshed open-weight landscape page.
+
+## [2026-05-01] ingest | Add note for Instruction Tuning with GPT-4
+
+- Downloaded `arXiv:2304.03277` into `raw/inbox/2304.03277.pdf`.
+- Added `wiki/30-papers/instruction-tuning-with-gpt-4-2304.03277.md`.
+- Updated `wiki/20-concepts/rlhf.md` to connect RLHF reward modeling with machine-generated comparison data.
+- Updated `wiki/index.md` with the new paper entry.
+
+## [2026-05-01] ingest | Expand instruction-tuning lineage and add feedback comparison
+
+- Downloaded `2212.10560` into `raw/inbox/2212.10560.pdf`.
+- Added `wiki/30-papers/self-instruct-2212.10560.md` for the original Self-Instruct paper.
+- Added `wiki/30-papers/stanford-alpaca.md` as a project-note page based on the Stanford CRFM blog and repo.
+- Added `wiki/30-papers/vicuna-open-source-chatbot.md` as a project-note page based on the LMSYS blog and FastChat repo.
+- Added `wiki/40-comparisons/human-feedback-vs-ai-feedback-vs-verification.md`.
+- Updated `wiki/index.md` to include the new lineage pages and the comparison page.
+
+## [2026-05-01] write | Add parameter-vs-capability timeline comparison
+
+- Added `wiki/40-comparisons/parameter-vs-capability-over-time-2023-2026.md`.
+- Framed the page around publicly disclosed parameter counts plus public capability signals, rather than pretending a full industry-wide parameter curve exists.
+- Updated `wiki/index.md` with the new comparison entry.
+
+## [2026-05-01] refactor | Split parameter-vs-capability timeline into chat, reasoning, and code
+
+- Refactored `wiki/40-comparisons/parameter-vs-capability-over-time-2023-2026.md` into a hub page.
+- Added `wiki/40-comparisons/parameter-vs-capability-chat-over-time-2023-2026.md`.
+- Added `wiki/40-comparisons/parameter-vs-capability-reasoning-over-time-2023-2026.md`.
+- Added `wiki/40-comparisons/parameter-vs-capability-code-over-time-2023-2026.md` with extra emphasis on the shift from code completion to repo-level and agentic coding.
+- Updated `wiki/index.md` with the three split timeline pages.
+
+## [2026-05-02] revise | Merge split parameter timeline back into one file
+
+- Reworked `wiki/40-comparisons/parameter-vs-capability-over-time-2023-2026.md` back into a single document with internal sections for chat, reasoning, and code.
+- Removed the three temporary split pages under `wiki/40-comparisons/`.
+- Updated `wiki/index.md` to remove the split-page entries.
+
+## [2026-05-02] ingest | Add Deita paper note
+
+- Downloaded `arXiv:2312.15685` into `raw/inbox/2312.15685.pdf`.
+- Added `wiki/30-papers/deita-2312.15685.md`.
+- Updated `wiki/20-concepts/instruction-tuning.md` to include Deita in the data-quality/data-selection lineage.
+- Updated `wiki/40-comparisons/human-feedback-vs-ai-feedback-vs-verification.md` to classify Deita as AI-feedback/model-based data selection.
+- Updated `wiki/index.md` with the new paper entry.
+
+## [2026-05-03] ingest | Add MagPie paper note
+
+- Downloaded `arXiv:2406.08464` into `raw/inbox/2406.08464.pdf`.
+- Added `wiki/30-papers/magpie-2406.08464.md`.
+- Updated `wiki/20-concepts/instruction-tuning.md` to connect MagPie to the self-synthesis instruction data lineage.
+- Updated `wiki/40-comparisons/human-feedback-vs-ai-feedback-vs-verification.md` to classify MagPie under AI feedback / self-synthesis.
+- Updated `wiki/index.md` with the new paper entry.
+
+## [2026-05-03] note | Clarify agent learning boundaries
+
+- Added `wiki/40-comparisons/parameters-context-memory-skills-agent-learning.md`.
+- Framed synthetic data limits, teacher/student signal ceilings, and the distinction between model-level learning and system-level learning.
+- Updated `wiki/index.md` with the new comparison entry.
+
+## [2026-05-03] ingest | Add LIMA paper note
+
+- Downloaded `arXiv:2305.11206` into `raw/inbox/2305.11206.pdf`.
+- Added `wiki/30-papers/lima-2305.11206.md`.
+- Updated `wiki/20-concepts/instruction-tuning.md` to include LIMA in the data-quality/data-quantity lineage.
+- Updated `wiki/index.md` with the new paper entry.
+
+## [2026-05-03] note | Add t-SNE concept note from MagPie comments
+
+- Added `wiki/20-concepts/tsne-dimensionality-reduction.md`.
+- Linked the MagPie data-analysis section to the new t-SNE concept note.
+- Updated `wiki/index.md` with the new concept entry.

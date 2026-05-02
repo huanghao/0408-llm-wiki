@@ -13,6 +13,7 @@ This is the content-oriented entry point for the LLM wiki.
 ## Concepts
 
 **训练与优化**
+- [Instruction Tuning](20-concepts/instruction-tuning.md): 指令微调的数据来源、演化路线与关键论文导读
 - [Loss Functions](20-concepts/loss-functions.md): NLL、KL、DPO、REINFORCE 的选择决策树
 - [RLHF](20-concepts/rlhf.md): InstructGPT、DPO、PPO、GRPO 的完整对比
 - [REINFORCE](20-concepts/reinforce.md): 策略梯度基础算法，奖励/Return/Advantage 的区别
@@ -27,6 +28,11 @@ This is the content-oriented entry point for the LLM wiki.
 - [DCLM](20-concepts/dclm.md): DataComp-LM 数据过滤框架
 - [DolmIno](20-concepts/dolmino.md): 数据混合配方研究
 - [Domain-Specific Pipeline](20-concepts/domain-specific-pipeline-code-math.md): 代码与数学数据处理
+- [t-SNE and Embedding Visualization](20-concepts/tsne-dimensionality-reduction.md): 高维 embedding 可视化方法，适合看局部邻域和覆盖，不适合直接证明数据质量
+
+**部署与推理**
+- [ONNX](20-concepts/onnx.md): 跨框架模型中间格式，导出、运行时、图优化、量化全览
+- [量化（Quantization）](20-concepts/quantization.md): 低精度部署为什么是开放权重生态的基础设施
 
 **基础概念**
 - [Tokenization](20-concepts/tokenization.md): BPE、WordPiece、SentencePiece
@@ -39,16 +45,30 @@ This is the content-oriented entry point for the LLM wiki.
 
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
 - [Data Mixing Laws](30-papers/data-mixing-laws-2403.16952.md): 用指数函数拟合数据配比与验证损失的定量关系，嵌套 Scaling Laws 预测 1B 模型最优配比，ICLR 2025
+- [Phi-1](30-papers/phi-1-2306.11644.md): 1.3B 参数 + 7B 教科书质量数据，HumanEval 50.6%，超越 10 倍大的模型
+- [Phi-2 / Phi-3](30-papers/phi-2-phi-3.md): 教科书质量路线扩展到通用推理，phi-3-mini 3.8B 匹敌 GPT-3.5，可本地运行于手机
 - [DoReMi](30-papers/doremi-2305.10429.md): 用小代理模型自动优化预训练数据 domain 配比，280M→8B 加速 2.6×
 - [LIMO](30-papers/limo-2502.03387.md): 817 条高质量 SFT 数据激发强数学推理能力
 - [Quiet-STaR](30-papers/quiet-star-2403.09629.md): 让模型在每个 token 处静默思考，从普通文本中自发学习推理
 - [nuScenes](30-papers/nuscenes-1903.11027.md): 自动驾驶多传感器数据集，360° 全向感知基准
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用
+- [Instruction Tuning with GPT-4](30-papers/instruction-tuning-with-gpt-4-2304.03277.md): 首次系统验证用 GPT-4 生成指令数据和比较数据来蒸馏开源 assistant
+- [Self-Instruct](30-papers/self-instruct-2212.10560.md): instruction tuning 合成数据路线起点，用模型自己生成 instruction / instance 再对齐自己
+- [Unnatural Instructions](30-papers/unnatural-instructions-2212.09689.md): 15 个种子样本 → LLM 全自动生成 24 万条指令数据，合成数据媲美人工众包的实证
+- [AlpaGasus](30-papers/alpagasus-2307.08701.md): 用 ChatGPT 对 Alpaca 52k 数据打分，只取 9k 高质量样本训练反超原版——"数据质量 > 数据数量"的早期实证
+- [Stanford Alpaca](30-papers/stanford-alpaca.md): 把 Self-Instruct 工程化成低成本、可复现的开源 instruction-tuning recipe
+- [Vicuna](30-papers/vicuna-open-source-chatbot.md): 用 ShareGPT 多轮对话把开源 assistant 从 instruction 模式推进到 chat 模式
+- [LIMA](30-papers/lima-2305.11206.md): LLaMA 65B + 1,000 条精选 demonstrations，无 RLHF 也能激活强 assistant 行为，NeurIPS 2023
+- [Deita](30-papers/deita-2312.15685.md): 用复杂度、质量、多样性三维自动筛选 6K/10K instruction tuning 数据，ICLR 2024
+- [MagPie](30-papers/magpie-2406.08464.md): 只用 aligned LLM 的 chat template 触发自生成用户指令，百万级合成 alignment 数据，ICLR 2025
+- [开放权重模型全景（2023–2026-05）](30-papers/open-weight-models-landscape.md): 从 Llama 2 到 Qwen3 / DeepSeek-R1 / OLMo 2 / Qwen3-Coder 的开放权重生态总览
 
 ## Comparisons
 
-- Pending.
+- [Human Feedback vs AI Feedback vs Verification](40-comparisons/human-feedback-vs-ai-feedback-vs-verification.md): 后训练三类监督信号源的目标、优劣和适用任务对比
+- [参数量 vs 能力：2023–2026 的时间压缩](40-comparisons/parameter-vs-capability-over-time-2023-2026.md): 公开参数量模型里，达到相近可用能力所需参数量如何随时间下降
+- [Parameters vs Context vs Memory vs Skills](40-comparisons/parameters-context-memory-skills-agent-learning.md): agent 系统里参数、上下文、外部记忆和 skill 的学习边界
 
 ## Open Questions
 

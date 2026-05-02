@@ -330,5 +330,5 @@ WHERE clip_id IN ('clip_001', 'clip_002', ...);
 ## 相关概念
 
 - [zarr 和 Parquet 的区别](../20-concepts/loss-functions.md)（待补充独立概念页）
-- [nuScenes 数据集格式](../30-papers/nuscenes-1903.11027.md)：传感器数据标注的行业参考
+- **[nuScenes 数据集格式](../30-papers/nuscenes-1903.11027.md)**：传感器数据标注的行业参考
 - [ScenarioNet](../10-roadmaps/llm-learning-roadmap-20260410.md)：把真实数据重建为可交互仿真场景

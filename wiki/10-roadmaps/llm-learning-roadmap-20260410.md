@@ -72,9 +72,9 @@ P("趣" | "机器 学习 很 有") = count("机器 学习 很 有 趣") / count(
 
 **Scaling Law**（Kaplan et al., 2020；Chinchilla, 2022）：系统研究模型大小、数据量、计算量三者的关系，给出"给定算力预算怎么分配最优"的答案。成为所有认真做预训练的团队的基础参考。
 
-**PaLM**（Chowdhery et al., 2022，Google）：540B 参数，多步推理能力进一步涌现，提出 MFU（Model FLOPs Utilization）作为训练效率的标准度量。详见 [MFU](../20-concepts/mfu.md)。
+**PaLM**（Chowdhery et al., 2022，Google）：540B 参数，多步推理能力进一步涌现，提出 MFU（Model FLOPs Utilization）作为训练效率的标准度量。详见 **[MFU](../20-concepts/mfu.md)**。
 
-**数据工程同步成熟**：规模扩大的同时，数据质量成为瓶颈。ccNet（2019）、Gopher/MassiveText（2021）、DCLM（2024）是这条线上的里程碑。
+**数据工程同步成熟**：规模扩大的同时，数据质量成为瓶颈。ccNet（2019）、**[Gopher](../30-papers/gopher-2112.11446.md)**/MassiveText（2021）、**[DCLM](../30-papers/dclm-2406.11794.md)**（2024）是这条线上的里程碑。
 
 **遇到的坎**：模型越来越大，但它只是在"预测合理的续写"，**不会按人的意图行事**。给它一个问题，它可能给出一个统计上合理但完全没用的回答。需要一种方法让模型"对齐"人类意图。
 
@@ -84,7 +84,7 @@ P("趣" | "机器 学习 很 有") = count("机器 学习 很 有 趣") / count(
 
 **核心突破**：通过人类反馈的强化学习（RLHF）让模型从"预测续写"转变为"按指令回答"，ChatGPT 的出现标志着 LLM 进入大众视野。
 
-**InstructGPT / RLHF**（Ouyang et al., 2022，OpenAI）：用人类对模型输出的偏好标注，训练 reward model，再用 PPO 强化学习优化语言模型。模型从"写出统计上合理的文字"变成"写出人类认为有用的文字"。
+**InstructGPT / RLHF**（Ouyang et al., 2022，OpenAI）：用人类对模型输出的偏好标注，训练 reward model，再用 PPO 强化学习优化语言模型。模型从"写出统计上合理的文字"变成"写出人类认为有用的文字"。详见 **[RLHF](../20-concepts/rlhf.md)**。
 
 **ChatGPT**（2022）：InstructGPT 的产品化，第一次让普通用户感受到 LLM 的能力。
 
@@ -102,7 +102,7 @@ P("趣" | "机器 学习 很 有") = count("机器 学习 很 有 趣") / count(
 
 **o1 / DeepSeek-R1**（2024–2025）：用强化学习训练模型的推理过程本身，而不只是最终答案。模型学会了"想更久才回答"，在数学、代码、科学推理上出现质变。
 
-**LIMO / s1**（2025）：发现少量高质量推理数据就能激发强大的推理能力，挑战了"推理需要海量数据"的直觉。
+**[LIMO](../30-papers/limo-2502.03387.md) / s1**（2025）：发现少量高质量推理数据就能激发强大的推理能力，挑战了"推理需要海量数据"的直觉。
 
 **当前状态**：这一代仍在快速演化中，核心问题从"模型能不能推理"转向"怎么控制 test-time compute、怎么让推理更可靠、怎么评测推理能力"。
 
@@ -156,7 +156,7 @@ Chain-of-Thought / o1 / R1（2024–2026）
 
 建议阅读顺序：
 
-1. **The Llama 3 Herd of Models**  
+1. **[The Llama 3 Herd of Models](../30-papers/llama-3-herd-of-models.md)**  
    链接：https://arxiv.org/abs/2407.21783  
    看点：顶级系统报告是怎么组织 pretrain、post-train、safety、tool use 的。
 2. **DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model**  
@@ -173,15 +173,15 @@ Chain-of-Thought / o1 / R1（2024–2026）
 
 建议阅读顺序：
 
-1. **Quiet-STaR: Language Models Can Teach Themselves to Think Before Speaking**  
+1. **[Quiet-STaR: Language Models Can Teach Themselves to Think Before Speaking](../30-papers/quiet-star-2403.09629.md)**  
    链接：https://arxiv.org/abs/2403.09629  
-   看点：它认真讨论了“模型能不能先想再说”。
+   看点：它认真讨论了”模型能不能先想再说”。
 2. **s1: Simple test-time scaling**  
    链接：https://arxiv.org/abs/2501.19393  
    看点：把很多人对 o1 类模型的直觉，变成一个相对简单、可复现的 recipe。
-3. **LIMO: Less is More for Reasoning**  
+3. **[LIMO: Less is More for Reasoning](../30-papers/limo-2502.03387.md)**  
    链接：https://arxiv.org/abs/2502.03387  
-   看点：挑战“推理一定需要海量 reasoning data”这个直觉。
+   看点：挑战”推理一定需要海量 reasoning data”这个直觉。
 4. **DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning**  
    链接：https://arxiv.org/abs/2501.12948  
    看点：让“RL 直接激发 reasoning”这条路线真正出圈。
@@ -298,11 +298,13 @@ Scaling law 的核心问题是：给定计算预算，怎么分配模型参数�
    链接：https://arxiv.org/abs/2203.15556  
    看点：推翻了 Kaplan 的结论——给定计算预算，应该同时增大模型和数据量，而不是只增大模型。"Chinchilla-optimal"成为此后几年预训练的标准参考点。
 
-3. **Scaling Laws for Data Filtering**（DCLM，2024）  
+3. **[Scaling Laws for Data Filtering (DCLM)](../30-papers/dclm-2406.11794.md)**（2024）  
    链接：https://arxiv.org/abs/2406.11794  
    看点：把 scaling law 的思路扩展到数据过滤策略——不同过滤方式在不同数据规模下的效果曲线。是 scaling law 方法论在数据工程方向的延伸。
 
 **2026 年的视角**：Kaplan 和 Chinchilla 的结论都是在"用完整的互联网数据训练"的假设下得出的。当训练数据开始包含大量合成数据、高质量精选数据时，这些结论的适用范围变得更模糊。Llama 3 的做法（用小模型实验 + scaling law 预测大模型性能）代表了当前工业界最实用的应用方式，而不是直接套用 Chinchilla 公式。
+
+**Compute Optimal vs Data Optimal**：Chinchilla 解决的是"固定训练预算，怎么分配参数量和 token 数"——这是个 training-side 问题。但 Phi-3（2024）提出了另一个轴：**固定部署约束（推理预算/手机内存/延迟要求），怎么用数据把给定参数量压榨到极限**——这是个 inference-side 问题。当大量用户用小设备推理时，这个问题的经济重要性远超训练成本优化。Phi-3-mini（3.8B）性能接近 GPT-3.5 是这个框架最直观的验证。详见 **[Phi-2/Phi-3](../30-papers/phi-2-phi-3.md)**。
 
 ## 最该更新的认知
 

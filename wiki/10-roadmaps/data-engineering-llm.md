@@ -6,11 +6,11 @@
 
 各来源比例怎么定，比单个来源的质量更关键。Llama 3 在预训练最后阶段把代码/数学比例拉高，就是这个逻辑。
 
-1. **DoReMi: Optimizing Data Mixtures Speeds Up Language Model Pretraining**（Xie et al., 2023，Stanford）  
+1. **[DoReMi: Optimizing Data Mixtures Speeds Up Language Model Pretraining](../30-papers/doremi-2305.10429.md)**（Xie et al., 2023，Stanford）  
    链接：https://arxiv.org/abs/2305.10429  
    看点：用小代理模型自动搜索最优数据混合比例，把人工猜比例变成可优化的问题。是 Llama 3 数据配方思路的方法论来源。
 
-2. **Data Mixing Laws: Optimizing Data Mixtures by Predicting Language Modeling Performance**（2024）  
+2. **[Data Mixing Laws: Optimizing Data Mixtures by Predicting Language Modeling Performance](../30-papers/data-mixing-laws-2403.16952.md)**（2024）  
    链接：https://arxiv.org/abs/2403.16952  
    看点：把 scaling law 的思路用到数据混合上，小规模实验预测大规模混合效果。
 
@@ -18,11 +18,11 @@
 
 真实数据的天花板越来越低，用强模型生成训练数据成为主要补充。
 
-3. **Textbooks Are All You Need / Phi-1**（Gunasekar et al., 2023，Microsoft）  
+3. **[Textbooks Are All You Need / Phi-1](../30-papers/phi-1-2306.11644.md)**（Gunasekar et al., 2023，Microsoft）  
    链接：https://arxiv.org/abs/2306.11644  
    看点：用 GPT-4 生成"教科书质量"的代码训练数据，1.3B 模型在代码上超越大得多的模型。直接挑战"数据量越大越好"的直觉。
 
-4. **Phi-2 / Phi-3**（Microsoft，2023–2024）  
+4. **[Phi-2 / Phi-3](../30-papers/phi-2-phi-3.md)**（Microsoft，2023–2024）  
    链接：https://arxiv.org/abs/2404.14219（Phi-3）  
    看点：把合成数据思路从代码扩展到通用能力，3.8B 模型在多项任务上接近 Llama 3 70B。核心洞察：数据质量对小模型的影响比对大模型更显著。
 
@@ -30,7 +30,7 @@
 
 过滤是"去掉坏数据"，质量提升是"让好数据更好"——重写、精选、标注细化。这是近两年从合成数据实践中总结出来的独立方向。
 
-5. **Instruction Tuning with GPT-4**（Peng et al., 2023，Microsoft）  
+5. **[Instruction Tuning with GPT-4](../30-papers/instruction-tuning-with-gpt-4-2304.03277.md)**（Peng et al., 2023，Microsoft）  
    链接：https://arxiv.org/abs/2304.03277  
    看点：用 GPT-4 重写低质量指令数据，而不是只过滤掉它。质量提升的核心动作：改写 > 删除。
 

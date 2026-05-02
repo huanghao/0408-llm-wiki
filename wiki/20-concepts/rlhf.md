@@ -38,6 +38,8 @@ RLHF 分三个阶段：
 
 **数据量**：InstructGPT 用了约 **33,000 条**偏好比较对训练奖励模型（每条是"问题 + 两个答案 + 哪个更好"）。RM 的数据量通常比 SFT 多，因为偏好标注比写答案更快（标注员只需要比较，不需要从头写），可以更高效地收集。
 
+一个重要的早期分支是：**不先收集人工 comparison data，而是让更强的模型先生成 comparison data**。例如 [Instruction Tuning with GPT-4](../30-papers/instruction-tuning-with-gpt-4-2304.03277.md)（Peng et al., 2023）就用 GPT-4 给多个回答打分和比较，再训练 reward model。它还不是完整 RLHF，但已经把“AI 生成偏好数据”这条路线明确化了。
+
 ### 阶段三：PPO 强化学习
 
 用奖励模型作为环境，用 PPO（Proximal Policy Optimization）算法优化语言模型，让它生成能获得高奖励分数的输出。
