@@ -5,10 +5,15 @@ This is the content-oriented entry point for the LLM wiki.
 ## Overview
 
 - [Knowledge Base Overview](00-overview/knowledge-base-overview.md): repo purpose, structure, and operating model.
+- [AV Data Pipeline Architecture](00-overview/av-data-pipeline-architecture.md): 自动驾驶数据处理全链路架构概览
+- [PNC Model Architecture](00-overview/pnc-model-architecture.md): PNC 神经网络模型的架构、规模与训练数据
+- [Tesla Data Engine](00-overview/tesla-data-engine.md): Karpathy 在 Tesla AI Day 演讲中描述的数据飞轮范式
 
 ## Roadmaps
 
 - [LLM Learning Roadmap (2026-04-10)](10-roadmaps/llm-learning-roadmap-20260410.md): main post-2024 reading path focused on open models, reasoning, alignment, long context, and agent evaluation.
+- [LLM 数据工程路线图](10-roadmaps/data-engineering-llm.md): 过滤、去重、数据混合配方、合成数据的学习路径
+- [AV 数据工程路线图](10-roadmaps/data-engineering-av.md): 自动驾驶数据飞轮、标注体系、传感器融合的学习路径
 
 ## Concepts
 
@@ -34,12 +39,17 @@ This is the content-oriented entry point for the LLM wiki.
 - [ONNX](20-concepts/onnx.md): 跨框架模型中间格式，导出、运行时、图优化、量化全览
 - [量化（Quantization）](20-concepts/quantization.md): 低精度部署为什么是开放权重生态的基础设施
 
+**Scaling 基础**
+- [幂律与 Scaling（Power Law）](20-concepts/power-law-and-scaling.md): 幂律是什么、翻倍法则、在 LLM/语言/城市/地震等领域的普遍出现，以及为何指数小意味着收益递减
+
 **基础概念**
 - [Tokenization](20-concepts/tokenization.md): BPE、WordPiece、SentencePiece
 - [Word Embedding](20-concepts/word-embedding.md): 词向量基础
 - [MFU](20-concepts/mfu.md): 模型 FLOPs 利用率
 - [Ablation Study](20-concepts/ablation-study.md): 消融实验方法论
 - [Synthetic Data with Verification](20-concepts/synthetic-data-with-verification.md): 合成数据与验证
+- [Minimax 博弈](20-concepts/minimax.md): 博弈论中对抗框架，GAN / RLHF reward hacking 的理论基础
+- [随机森林（Random Forest）](20-concepts/random-forest.md): 集成学习方法，bagging + 特征随机性的决策树集成
 
 ## Papers
 
@@ -51,6 +61,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [LIMO](30-papers/limo-2502.03387.md): 817 条高质量 SFT 数据激发强数学推理能力
 - [Quiet-STaR](30-papers/quiet-star-2403.09629.md): 让模型在每个 token 处静默思考，从普通文本中自发学习推理
 - [nuScenes](30-papers/nuscenes-1903.11027.md): 自动驾驶多传感器数据集，360° 全向感知基准
+- [nuPlan](30-papers/nuplan-2106.11810.md): 闭环 ML-based 自动驾驶规划基准，10,000+ 小时真实驾驶日志
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用
 - [Instruction Tuning with GPT-4](30-papers/instruction-tuning-with-gpt-4-2304.03277.md): 首次系统验证用 GPT-4 生成指令数据和比较数据来蒸馏开源 assistant
@@ -62,6 +73,10 @@ This is the content-oriented entry point for the LLM wiki.
 - [LIMA](30-papers/lima-2305.11206.md): LLaMA 65B + 1,000 条精选 demonstrations，无 RLHF 也能激活强 assistant 行为，NeurIPS 2023
 - [Deita](30-papers/deita-2312.15685.md): 用复杂度、质量、多样性三维自动筛选 6K/10K instruction tuning 数据，ICLR 2024
 - [MagPie](30-papers/magpie-2406.08464.md): 只用 aligned LLM 的 chat template 触发自生成用户指令，百万级合成 alignment 数据，ICLR 2025
+- [Scaling Laws for Neural Language Models (Kaplan et al.)](30-papers/scaling-laws-neural-lm-2001.08361.md): loss 与 N/D/C 各呈幂律；固定计算应优先扩大模型（Kaplan rule），被 Chinchilla 修正为等比例，2020
+- [Chinchilla Scaling Laws](30-papers/chinchilla-2203.15556.md): 固定 FLOPs 下参数量与 token 数应等比例扩大（~20× rule），当时大模型普遍过大欠训；70B Chinchilla 以同等计算全面超越 280B Gopher，NeurIPS 2022
+- [Scaling Data-Constrained Language Models](30-papers/scaling-data-constrained-lms-2305.16264.md): 数据受限场景下重复数据最多 4 epoch 几乎无损，超过后收益递减；最优分配应多加 epoch 少加参数，NeurIPS 2023
+- [Are Emergent Abilities a Mirage?](30-papers/emergent-abilities-mirage-2304.15004.md): 涌现能力是评估指标非线性的人工产物，换用线性指标即变为平滑提升；数学证明 + 视觉模型实验，NeurIPS 2023 Oral
 - [开放权重模型全景（2023–2026-05）](30-papers/open-weight-models-landscape.md): 从 Llama 2 到 Qwen3 / DeepSeek-R1 / OLMo 2 / Qwen3-Coder 的开放权重生态总览
 
 ## Comparisons
@@ -78,4 +93,5 @@ This is the content-oriented entry point for the LLM wiki.
 
 - [Knowledge Base Conventions](90-meta/conventions.md): page rules and maintenance expectations.
 - [Lint Report 2026-04-28](90-meta/lint-20260428.md): wiki health check findings and action items.
+- [Lint Report 2026-05-03](90-meta/lint-20260503.md): wiki health check findings and action items.
 - [Log](log.md): chronological record of ingests and updates.

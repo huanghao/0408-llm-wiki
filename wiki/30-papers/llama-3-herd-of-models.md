@@ -544,6 +544,18 @@ Llama 3 的 3.1 节描述了一套多层次的 Web 数据处理管道，从原�
 
 **总结一句话**：Llama 3 的管道代表了 2024 年中期"工业级 Web 数据清洗"的成熟做法，其中去重部分仍然是标准，但质量过滤部分已经被更强的模型驱动方法超越，而整个领域的前沿已经从"如何清洗真实数据"转向"如何生成和验证合成数据"。
 
+## 现状与影响
+
+一句话定性：**Llama 3 是 reasoning 时代到来前开放权重模型的最高水位线，代表了"数据 + 规模 + 工程"路线的成熟顶点；其 post-training 配方（SFT + RS + DPO）和数据管道设计至今仍是工业基线，但 reasoning 能力已被 DeepSeek-R1 等 RL-first 路线超越。**
+
+截至 2026，影响体现在：
+
+- **开放权重生态锚点**：Llama 3 405B 是 2024 年开放权重的旗舰，推动整个社区从"2B/7B 够用"转向认真对待 70B+ 规模；之后 Llama 3.1 / 3.2 / 3.3 系列持续迭代。
+- **数据工程范式**：15T tokens、多层去重、domain-specific pipeline、scaling law 驱动的数据 mix 选择，成为后续开放权重模型（如 OLMo 2、Qwen 3）的参考模板。
+- **Post-training 基线**：SFT + rejection sampling + DPO 这条链路被 Tulu 3、Qwen 2.5 等广泛沿用；但 reasoning 领域（代码、数学、逻辑）已被 GRPO / REINFORCE 等更重 RL 路线超越。
+- **已被超越的部分**：在高强度 reasoning 任务（AIME、Codeforces）上，Llama 3 的 post-training 方案明显弱于 DeepSeek-R1 类路线；长上下文能力也被后续 Gemini 1.5 / Llama 3.1 的专项工作改善。
+- **仍然有效的部分**：通用 assistant、tool use、helpfulness、多语言这些场景，Llama 3 的配方仍然是可靠的工业主线；其安全框架（Llama Guard 3）也被延续。
+
 ## Related Pages
 
 - [LLM Learning Roadmap (2026-04-10)](../10-roadmaps/llm-learning-roadmap-20260410.md)

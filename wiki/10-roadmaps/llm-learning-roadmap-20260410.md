@@ -1,6 +1,6 @@
 # LLM 学习线路图（截至 2026-04-10）
 
-基于之前的基础知识梳理，下面这份清单聚焦“从 2024 年中后期到 2026-04-10，这段时间 LLM 领域最值得补的主线”。
+基于之前的基础知识梳理，下面这份清单聚焦"从 2024 年中后期到 2026-04-10，这段时间 LLM 领域最值得补的主线"。
 
 ## 0. 前置：核心概念的演化脉络
 
@@ -70,11 +70,13 @@ P("趣" | "机器 学习 很 有") = count("机器 学习 很 有 趣") / count(
 
 **GPT-3**（Brown et al., 2020，OpenAI）：1750 亿参数，few-shot learning 涌现——不需要 fine-tune，只需要在 prompt 里给几个例子，模型就能完成新任务。这是一个质变，不只是量变。
 
-**Scaling Law**（Kaplan et al., 2020；Chinchilla, 2022）：系统研究模型大小、数据量、计算量三者的关系，给出"给定算力预算怎么分配最优"的答案。成为所有认真做预训练的团队的基础参考。
+**Scaling Law**（[Kaplan et al., 2020](../30-papers/scaling-laws-neural-lm-2001.08361.md)；[Chinchilla, 2022](../30-papers/chinchilla-2203.15556.md)）：系统研究模型大小、数据量、计算量三者的关系，给出"给定算力预算怎么分配最优"的答案。成为所有认真做预训练的团队的基础参考。
 
 **PaLM**（Chowdhery et al., 2022，Google）：540B 参数，多步推理能力进一步涌现，提出 MFU（Model FLOPs Utilization）作为训练效率的标准度量。详见 **[MFU](../20-concepts/mfu.md)**。
 
-**数据工程同步成熟**：规模扩大的同时，数据质量成为瓶颈。ccNet（2019）、**[Gopher](../30-papers/gopher-2112.11446.md)**/MassiveText（2021）、**[DCLM](../30-papers/dclm-2406.11794.md)**（2024）是这条线上的里程碑。
+**数据工程同步成熟**：规模扩大的同时，数据质量成为瓶颈。[ccNet](../20-concepts/ccnet.md)（2019）、**[Gopher](../30-papers/gopher-2112.11446.md)**/MassiveText（2021）、**[DCLM](../30-papers/dclm-2406.11794.md)**（2024）是这条线上的里程碑。
+
+**涌现能力的争议**：Wei et al.（2022）观察到能力在某规模阈值处"突然出现"。[Schaeffer et al.（2023）](../30-papers/emergent-abilities-mirage-2304.15004.md)反驳：这是评估指标非线性造成的人工产物，换用线性指标就变成平滑提升。
 
 **遇到的坎**：模型越来越大，但它只是在"预测合理的续写"，**不会按人的意图行事**。给它一个问题，它可能给出一个统计上合理但完全没用的回答。需要一种方法让模型"对齐"人类意图。
 
@@ -90,6 +92,8 @@ P("趣" | "机器 学习 很 有") = count("机器 学习 很 有 趣") / count(
 
 **Llama**（Touvron et al., 2023，Meta）：开源了高质量基础模型，让学术界和中小团队能够在此基础上做 fine-tune 和研究，大幅降低了入门门槛。
 
+**指令微调数据路线**：[Self-Instruct](../30-papers/self-instruct-2212.10560.md) → [Stanford Alpaca](../30-papers/stanford-alpaca.md) → [Vicuna](../30-papers/vicuna-open-source-chatbot.md) → [LIMA](../30-papers/lima-2305.11206.md) → [Deita](../30-papers/deita-2312.15685.md) / [MagPie](../30-papers/magpie-2406.08464.md)。这条线从"怎么获得足够多的指令数据"演化到"怎么获得足够好的指令数据"，再到"怎么自动大规模生成高质量指令数据"。详见 [Instruction Tuning](../20-concepts/instruction-tuning.md)。
+
 **遇到的坎**：RLHF 需要大量人工标注，成本高；reward model 本身可能被"博弈"（reward hacking）；模型在对话上表现好，但**复杂推理任务**（数学、逻辑、多步规划）仍然很弱。
 
 ---
@@ -103,6 +107,13 @@ P("趣" | "机器 学习 很 有") = count("机器 学习 很 有 趣") / count(
 **o1 / DeepSeek-R1**（2024–2025）：用强化学习训练模型的推理过程本身，而不只是最终答案。模型学会了"想更久才回答"，在数学、代码、科学推理上出现质变。
 
 **[LIMO](../30-papers/limo-2502.03387.md) / s1**（2025）：发现少量高质量推理数据就能激发强大的推理能力，挑战了"推理需要海量数据"的直觉。
+
+**Test-Time Compute（推理时计算量）** 是这一代的核心新概念。传统 LLM 是"一次 forward pass 出答案"，计算量固定。但推理模型打开了一个新旋钮：**在 inference 时花更多计算来换更好的答案**。常见形式有两种：
+
+- **顺序延伸（sequential）**：让模型在 `<think>` 标签里先写很长的内部推理链，再给出最终答案——o1/R1 的核心机制。同一个模型，给它更多"思考 token 预算"，答案质量就更高。
+- **并行采样（parallel）**：同一个问题生成多个候选答案，用 reward model 或 verifier 选出最好的（Best-of-N）。计算量×N，但可以并行。
+
+这两种方式让"花钱换质量"的逻辑从训练阶段延伸到推理阶段——以前买更好结果要训更大模型，现在可以在 inference 时多花算力。这也带来新的工程问题：推理成本怎么控制、怎么预测"多长的思考链够用"、怎么避免模型"想了很久但绕圈"。
 
 **当前状态**：这一代仍在快速演化中，核心问题从"模型能不能推理"转向"怎么控制 test-time compute、怎么让推理更可靠、怎么评测推理能力"。
 
@@ -146,7 +157,7 @@ Chain-of-Thought / o1 / R1（2024–2026）
 过去这段时间，LLM 领域最重要的变化，不是又多了几个模型名，而是 4 件事变得清晰了：
 
 1. 开放模型的工程配方成熟了：不再只看架构，而是看数据、post-training、RL、评测一整套怎么拼。
-2. reasoning 变成主线：从“会不会推理”转向“怎么用 test-time compute、RL、少量高质量数据把推理能力激发出来”。
+2. reasoning 变成主线：从"会不会推理"转向"怎么用 test-time compute、RL、少量高质量数据把推理能力激发出来"。
 3. 长上下文和 agent 从 demo 变成独立研究方向：不是单纯 RAG，而是上下文利用率、computer use、真实任务执行。
 4. 评测体系明显升级：旧 benchmark 已经太饱和，大家开始用更难、更真实、更抗污染的评测。
 
@@ -156,8 +167,7 @@ Chain-of-Thought / o1 / R1（2024–2026）
 
 建议阅读顺序：
 
-1. **[The Llama 3 Herd of Models](../30-papers/llama-3-herd-of-models.md)**  
-   链接：https://arxiv.org/abs/2407.21783  
+1. **[The Llama 3 Herd of Models](../30-papers/llama-3-herd-of-models.md)**（Meta, 2024）  
    看点：顶级系统报告是怎么组织 pretrain、post-train、safety、tool use 的。
 2. **DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model**  
    链接：https://arxiv.org/abs/2405.04434  
@@ -168,39 +178,64 @@ Chain-of-Thought / o1 / R1（2024–2026）
 4. **Tulu 3: Pushing Frontiers in Open Language Model Post-Training**  
    链接：https://arxiv.org/abs/2411.15124  
    看点：更像一份现代 post-training cookbook，把 SFT、偏好优化、RL、评测串起来。
+5. **[开放权重模型全景（2023–2026-05）](../30-papers/open-weight-models-landscape.md)**  
+   看点：Llama 2 到 Qwen3 / DeepSeek-R1 / OLMo 2 的全局视角，快速定位各模型在生态中的位置。
 
 ### 2. 推理能力为什么成了主线
 
 建议阅读顺序：
 
-1. **[Quiet-STaR: Language Models Can Teach Themselves to Think Before Speaking](../30-papers/quiet-star-2403.09629.md)**  
-   链接：https://arxiv.org/abs/2403.09629  
-   看点：它认真讨论了”模型能不能先想再说”。
+1. **[Quiet-STaR: Language Models Can Teach Themselves to Think Before Speaking](../30-papers/quiet-star-2403.09629.md)**（2024）  
+   看点：它认真讨论了"模型能不能先想再说"。
 2. **s1: Simple test-time scaling**  
    链接：https://arxiv.org/abs/2501.19393  
    看点：把很多人对 o1 类模型的直觉，变成一个相对简单、可复现的 recipe。
-3. **[LIMO: Less is More for Reasoning](../30-papers/limo-2502.03387.md)**  
-   链接：https://arxiv.org/abs/2502.03387  
-   看点：挑战”推理一定需要海量 reasoning data”这个直觉。
+3. **[LIMO: Less is More for Reasoning](../30-papers/limo-2502.03387.md)**（2025）  
+   看点：挑战"推理一定需要海量 reasoning data"这个直觉。
 4. **DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning**  
    链接：https://arxiv.org/abs/2501.12948  
-   看点：让“RL 直接激发 reasoning”这条路线真正出圈。
+   看点：让"RL 直接激发 reasoning"这条路线真正出圈。
 
 ### 3. 数据工程：过滤只是起点
 
 完整内容见 → [LLM 数据工程：过滤只是起点](data-engineering-llm.md)
 
-核心图景：**过滤/去重**（ccNet/DCLM）→ **合成**（Phi）→ **质量提升**（AlpaGasus/Deita）→ **混合配方**（DoReMi）→ **课程安排**（Annealing/LIMA）。
+核心图景：**过滤/去重**（[ccNet](../20-concepts/ccnet.md) / [DCLM](../30-papers/dclm-2406.11794.md)）→ **合成**（[Phi-1](../30-papers/phi-1-2306.11644.md) / [Phi-2/Phi-3](../30-papers/phi-2-phi-3.md)）→ **质量提升**（[AlpaGasus](../30-papers/alpagasus-2307.08701.md) / [Deita](../30-papers/deita-2312.15685.md)）→ **混合配方**（[DoReMi](../30-papers/doremi-2305.10429.md) / [Data Mixing Laws](../30-papers/data-mixing-laws-2403.16952.md)）→ **课程安排**（Annealing / [LIMA](../30-papers/lima-2305.11206.md)）。
 
-必读论文：DoReMi、Phi-3、LIMA、AlpaGasus、Deita。
+### 4. Scaling Law：现在还值得看吗
 
-### 4. 自动驾驶数据工程
+**短答案**：值得，但要带着批判性去看，而不是当成"规律"来记。
 
-完整内容见 → [自动驾驶数据工程](data-engineering-av.md)
+Scaling law 的核心问题是：给定计算预算，怎么分配模型参数量和训练 token 数，才能得到最好的模型？这个问题在 2024–2026 年仍然是基础性的，所有认真做预训练的团队都在跑 scaling law 实验。
 
-核心范式：**数据引擎飞轮**——部署车队 → 触发器自动挖掘 hard case → 人工精标 → 训练更好的模型 → 回到第 1 步。和 LLM 数据工程是同一套思维在不同模态的应用。
+但"scaling law 论文"这个类别里，质量差异很大：早期工作的结论已经被更新的数据推翻，有些结论只在特定规模范围内成立。读的时候要问：这个结论在什么规模、什么数据、什么架构下得出的？
 
-必看：Karpathy CVPR 2021 Tesla FSD 演讲（非论文）。
+建议阅读顺序：
+
+1. **[幂律与 Scaling（Power Law）](../20-concepts/power-law-and-scaling.md)**  
+   看点：先理解幂律本身是什么、翻倍法则、为什么指数小意味着收益递减——这是读 Kaplan 和 Chinchilla 的概念基础。
+
+2. **[Scaling Laws for Neural Language Models](../30-papers/scaling-laws-neural-lm-2001.08361.md)**（Kaplan et al., OpenAI，2020）  
+   看点：最早系统研究"模型大小、数据量、计算量"三者关系的论文，提出了幂律关系。结论后来被 Chinchilla 部分推翻，但作为理解 scaling law 概念的起点仍然必读。
+
+3. **[Training Compute-Optimal Large Language Models](../30-papers/chinchilla-2203.15556.md)**（Hoffmann et al., DeepMind，2022，即 Chinchilla）  
+   看点：推翻了 Kaplan 的结论——给定计算预算，应该同时增大模型和数据量，而不是只增大模型。"Chinchilla-optimal"成为此后几年预训练的标准参考点。
+
+4. **[Scaling Data-Constrained Language Models](../30-papers/scaling-data-constrained-lms-2305.16264.md)**（Muennighoff et al., 2023）  
+   看点：Chinchilla 假设数据无限；这篇扩展到数据受限场景，给出重复 epoch 的边际价值和最优分配建议。
+
+5. **[Are Emergent Abilities a Mirage?](../30-papers/emergent-abilities-mirage-2304.15004.md)**（Schaeffer et al., NeurIPS 2023 Oral）  
+   看点：scaling law 预测 loss 平滑下降，但"能力突然涌现"是指标非线性的产物——这篇把两者统一起来。
+
+6. **[Data Mixing Laws](../30-papers/data-mixing-laws-2403.16952.md)**（2024，ICLR 2025）  
+   看点：把 scaling law 的思路扩展到多域数据配比——不同数据来源的混合比例如何影响 loss，以及如何用小模型实验预测大模型最优配比。
+
+7. **[Scaling Laws for Data Filtering (DCLM)](../30-papers/dclm-2406.11794.md)**（2024）  
+   看点：把 scaling law 的思路扩展到数据过滤策略——不同过滤方式在不同数据规模下的效果曲线。
+
+**2026 年的视角**：Kaplan 和 Chinchilla 的结论都是在"用完整的互联网数据训练"的假设下得出的。当训练数据开始包含大量合成数据、高质量精选数据时，这些结论的适用范围变得更模糊。Llama 3 的做法（用小模型实验 + scaling law 预测大模型性能）代表了当前工业界最实用的应用方式，而不是直接套用 Chinchilla 公式。
+
+**Compute Optimal vs Data Optimal**：Chinchilla 解决的是"固定训练预算，怎么分配参数量和 token 数"——这是个 training-side 问题。但 [Phi-3](../30-papers/phi-2-phi-3.md)（2024）提出了另一个轴：**固定部署约束（推理预算/手机内存/延迟要求），怎么用数据把给定参数量压榨到极限**——这是个 inference-side 问题。当大量用户用小设备推理时，这个问题的经济重要性远超训练成本优化。Phi-3-mini（3.8B）性能接近 GPT-3.5 是这个框架最直观的验证。
 
 ### 5. alignment / reward model 的关注点怎么变了
 
@@ -211,48 +246,29 @@ Chain-of-Thought / o1 / R1（2024–2026）
    看点：模型既当选手又当裁判，这个设定为什么有吸引力，也有哪些风险。
 2. **RM-R1: Reward Modeling as Reasoning**  
    链接：https://arxiv.org/abs/2505.02387  
-   看点：reward model 不再只是“打分器”，而是在往“会推理的 judge”演化。
+   看点：reward model 不再只是"打分器"，而是在往"会推理的 judge"演化。
 
-### 4. 长上下文、agent、真实世界任务
+### 6. 长上下文、agent、真实世界任务
 
 建议阅读顺序：
 
 1. **Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context**  
    链接：https://arxiv.org/abs/2403.05530  
    看点：长上下文正式进入研究主线，而不只是 marketing。
-2. **RULER: What’s the Real Context Size of Your Long-Context Language Models?**  
+2. **RULER: What's the Real Context Size of Your Long-Context Language Models?**  
    链接：https://arxiv.org/abs/2404.06654  
-   看点：模型“支持 128K/1M context”不等于它真的会利用这么长的上下文。
+   看点：模型"支持 128K/1M context"不等于它真的会利用这么长的上下文。
 3. **OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments**  
    链接：https://arxiv.org/abs/2404.07972  
    看点：先把 agent 应该怎么测立住，而不是先看各种框架 demo。
 4. **SWE-Lancer: Can Frontier LLMs Earn $1 Million from Real-World Freelance Software Engineering?**  
    链接：https://arxiv.org/abs/2502.12115  
    看点：用真实经济价值来评估 coding agent。
-5. **Humanity’s Last Exam**  
+5. **Humanity's Last Exam**  
    链接：https://arxiv.org/abs/2501.14249  
-   看点：更新你对“当前前沿模型到底强到哪里了”的感知。
+   看点：更新你对"当前前沿模型到底强到哪里了"的感知。
 
-## 如果时间很少，只读 8 篇
-
-1. DeepSeek-V3  
-   https://arxiv.org/abs/2412.19437
-2. Tulu 3  
-   https://arxiv.org/abs/2411.15124
-3. s1  
-   https://arxiv.org/abs/2501.19393
-4. DeepSeek-R1  
-   https://arxiv.org/abs/2501.12948
-5. Gemini 1.5  
-   https://arxiv.org/abs/2403.05530
-6. OSWorld  
-   https://arxiv.org/abs/2404.07972
-7. Phi-3（数据工程/合成数据）  
-   https://arxiv.org/abs/2404.14219
-8. DoReMi（数据混合配方）  
-   https://arxiv.org/abs/2305.10429
-
-### 5. 评测体系本身是怎么演化的
+### 7. 评测体系本身是怎么演化的
 
 旧 benchmark 饱和之后，评测本身成了一个独立研究方向。这条线值得单独看，因为它决定了"我们现在用什么标准判断模型强不强"。
 
@@ -280,31 +296,15 @@ Chain-of-Thought / o1 / R1（2024–2026）
 
 **这条线的核心认知**：benchmark 不是中立的测量工具，它的设计决定了什么能力被看见、什么能力被忽略。读 benchmark 论文，要同时问"它在测什么"和"它测不到什么"。
 
-### 6. Scaling Law：现在还值得看吗
+### 8. 自动驾驶数据工程
 
-**短答案**：值得，但要带着批判性去看，而不是当成"规律"来记。
+完整内容见 → [自动驾驶数据工程](data-engineering-av.md)
 
-Scaling law 的核心问题是：给定计算预算，怎么分配模型参数量和训练 token 数，才能得到最好的模型？这个问题在 2024–2026 年仍然是基础性的，所有认真做预训练的团队都在跑 scaling law 实验。
+核心范式：**数据引擎飞轮**——部署车队 → 触发器自动挖掘 hard case → 人工精标 → 训练更好的模型 → 回到第 1 步。和 LLM 数据工程是同一套思维在不同模态的应用。
 
-但"scaling law 论文"这个类别里，质量差异很大：早期工作的结论已经被更新的数据推翻，有些结论只在特定规模范围内成立。读的时候要问：这个结论在什么规模、什么数据、什么架构下得出的？
+相关资料：[Tesla 数据引擎](../00-overview/tesla-data-engine.md)、[nuScenes](../30-papers/nuscenes-1903.11027.md)、[nuPlan](../30-papers/nuplan-2106.11810.md)。
 
-建议阅读顺序：
-
-1. **Scaling Laws for Neural Language Models**（Kaplan et al., OpenAI，2020）  
-   链接：https://arxiv.org/abs/2001.08361  
-   看点：最早系统研究"模型大小、数据量、计算量"三者关系的论文，提出了幂律关系。结论后来被 Chinchilla 部分推翻，但作为理解 scaling law 概念的起点仍然必读。
-
-2. **Training Compute-Optimal Large Language Models**（Hoffmann et al., DeepMind，2022，即 Chinchilla）  
-   链接：https://arxiv.org/abs/2203.15556  
-   看点：推翻了 Kaplan 的结论——给定计算预算，应该同时增大模型和数据量，而不是只增大模型。"Chinchilla-optimal"成为此后几年预训练的标准参考点。
-
-3. **[Scaling Laws for Data Filtering (DCLM)](../30-papers/dclm-2406.11794.md)**（2024）  
-   链接：https://arxiv.org/abs/2406.11794  
-   看点：把 scaling law 的思路扩展到数据过滤策略——不同过滤方式在不同数据规模下的效果曲线。是 scaling law 方法论在数据工程方向的延伸。
-
-**2026 年的视角**：Kaplan 和 Chinchilla 的结论都是在"用完整的互联网数据训练"的假设下得出的。当训练数据开始包含大量合成数据、高质量精选数据时，这些结论的适用范围变得更模糊。Llama 3 的做法（用小模型实验 + scaling law 预测大模型性能）代表了当前工业界最实用的应用方式，而不是直接套用 Chinchilla 公式。
-
-**Compute Optimal vs Data Optimal**：Chinchilla 解决的是"固定训练预算，怎么分配参数量和 token 数"——这是个 training-side 问题。但 Phi-3（2024）提出了另一个轴：**固定部署约束（推理预算/手机内存/延迟要求），怎么用数据把给定参数量压榨到极限**——这是个 inference-side 问题。当大量用户用小设备推理时，这个问题的经济重要性远超训练成本优化。Phi-3-mini（3.8B）性能接近 GPT-3.5 是这个框架最直观的验证。详见 **[Phi-2/Phi-3](../30-papers/phi-2-phi-3.md)**。
+---
 
 ## 最该更新的认知
 
@@ -313,4 +313,4 @@ Scaling law 的核心问题是：给定计算预算，怎么分配模型参数�
 3. 长上下文不能只看支持多长，要看模型会不会用。
 4. agent 研究不要先迷信框架，先看评测和 failure mode。
 5. benchmark 本身也在演化：旧的饱和了，新的在往更难、更真实、更抗污染的方向走。读模型报告时，要先看它用的是什么评测，再看数字。
-6. 数据工程不只是过滤和去重：混合配方（DoReMi）、合成数据（Phi）、课程安排（LIMA/Annealing）同样关键，而且这套逻辑在自动驾驶等其他领域有直接的同构对应。
+6. 数据工程不只是过滤和去重：混合配方（[DoReMi](../30-papers/doremi-2305.10429.md)）、合成数据（[Phi](../30-papers/phi-1-2306.11644.md)）、课程安排（[LIMA](../30-papers/lima-2305.11206.md) / Annealing）同样关键，而且这套逻辑在自动驾驶等其他领域有直接的同构对应。

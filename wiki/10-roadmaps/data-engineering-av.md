@@ -74,7 +74,7 @@ LLM 用困惑度（KenLM 打分）过滤低质量文本；自动驾驶没有"困
 
 ### 展开：Tesla 数据引擎精选 hard case
 
-Tesla 数据引擎（Data Engine）是上述飞轮的工程实现，Karpathy 在 CVPR 2021 和 Tesla AI Day 2021 中描述了核心机制：
+[Tesla 数据引擎（Data Engine）](../00-overview/tesla-data-engine.md)是上述飞轮的工程实现，Karpathy 在 CVPR 2021 和 Tesla AI Day 2021 中描述了核心机制：
 
 **触发器系统（Trigger System）**：工程师定义"我想找什么场景"，系统在全车队数据里自动搜索。比如：
 - "找所有在有遮挡情况下切入本车道的车辆"
