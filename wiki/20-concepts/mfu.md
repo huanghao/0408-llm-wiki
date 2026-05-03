@@ -8,6 +8,8 @@ MFU 的核心定义只有一句话：**实际算力 / 硬件峰值算力，与�
 
 $$\text{MFU} = \frac{\text{实际观测到的 token 吞吐量（tokens/s）}}{\text{理论最大 token 吞吐量（tokens/s）}}$$
 
+> **实际 token 吞吐量怎么测？** 就是用时间算：记录每个训练 step 的耗时（wall-clock time），然后 tokens/s = (batch_size × sequence_length) / step_time。比如 batch 里有 4M tokens、一个 step 跑了 2 秒，那么吞吐量就是 2M tokens/s。这个数字由训练框架在每个 step 结束后直接统计，不需要任何特殊硬件工具。
+
 "理论最大 token 吞吐量"是假设硬件 100% 跑满时能达到的速度，由硬件峰值 FLOPS 和模型每 token 需要多少 FLOPS 决定：
 
 $$\text{理论最大吞吐量} = \frac{P}{C_{\text{token}}}$$
