@@ -1,67 +1,174 @@
-# LLM 数据工程：过滤只是起点
+# LLM 数据工程
 
-你已经读过 ccNet / fastText / MinHash / DCLM，建立了"过滤和去重"这条线。但数据工程还有三个维度没有涉及，而它们在 2024 年之后变得和过滤同等重要：
+LLM 数据工程要回答一个问题：**怎么从原始素材中，获得让模型能力最大化的训练集？**
 
-## 数据混合配方（Data Mixture）
+这个问题在预训练和后训练两个阶段形态不同，但底层逻辑相通：信号嘈杂的原始来源 → 一系列决策和变换 → 对模型有最大价值的数据分布。
 
-各来源比例怎么定，比单个来源的质量更关键。Llama 3 在预训练最后阶段把代码/数学比例拉高，就是这个逻辑。
-
-1. **[DoReMi: Optimizing Data Mixtures Speeds Up Language Model Pretraining](../30-papers/doremi-2305.10429.md)**（Xie et al., 2023，Stanford）  
-   链接：https://arxiv.org/abs/2305.10429  
-   看点：用小代理模型自动搜索最优数据混合比例，把人工猜比例变成可优化的问题。是 Llama 3 数据配方思路的方法论来源。
-
-2. **[Data Mixing Laws: Optimizing Data Mixtures by Predicting Language Modeling Performance](../30-papers/data-mixing-laws-2403.16952.md)**（2024）  
-   链接：https://arxiv.org/abs/2403.16952  
-   看点：把 scaling law 的思路用到数据混合上，小规模实验预测大规模混合效果。
-
-## 合成数据（Synthetic Data）
-
-真实数据的天花板越来越低，用强模型生成训练数据成为主要补充。
-
-3. **[Textbooks Are All You Need / Phi-1](../30-papers/phi-1-2306.11644.md)**（Gunasekar et al., 2023，Microsoft）  
-   链接：https://arxiv.org/abs/2306.11644  
-   看点：用 GPT-4 生成"教科书质量"的代码训练数据，1.3B 模型在代码上超越大得多的模型。直接挑战"数据量越大越好"的直觉。
-
-4. **[Phi-2 / Phi-3](../30-papers/phi-2-phi-3.md)**（Microsoft，2023–2024）  
-   链接：https://arxiv.org/abs/2404.14219（Phi-3）  
-   看点：把合成数据思路从代码扩展到通用能力，3.8B 模型在多项任务上接近 Llama 3 70B。核心洞察：数据质量对小模型的影响比对大模型更显著。
-
-## 数据质量提升（Data Quality）
-
-过滤是"去掉坏数据"，质量提升是"让好数据更好"——重写、精选、标注细化。这是近两年从合成数据实践中总结出来的独立方向。
-
-5. **[Instruction Tuning with GPT-4](../30-papers/instruction-tuning-with-gpt-4-2304.03277.md)**（Peng et al., 2023，Microsoft）  
-   链接：https://arxiv.org/abs/2304.03277  
-   看点：用 GPT-4 重写低质量指令数据，而不是只过滤掉它。质量提升的核心动作：改写 > 删除。
-
-6. **AlpaGasus: Training a Better Alpaca with Fewer Data**（Chen et al., 2023）  
-   链接：https://arxiv.org/abs/2307.08701  
-   看点：用 ChatGPT 对 52K 条 Alpaca 数据逐条打分，保留高分 9K 条，效果反而更好。核心洞察：质量分布比数量更重要，噪声数据不只是"没用"，还会主动拉低模型质量。
-
-7. **Deita: What Makes Good Data for Alignment?**（Liu et al., 2024，清华）  
-   链接：https://arxiv.org/abs/2312.15685  
-   看点：系统研究"什么是高质量 SFT 数据"——复杂度（instruction complexity）和质量（response quality）是两个独立维度，同时高才有用。提出了可自动化的数据评分方法。
-
-8. **MagPie: Alignment Data Synthesis from Scratch by Prompting Aligned LLMs with Nothing**（2024）  
-   链接：https://arxiv.org/abs/2406.08464  
-   看点：直接让对齐好的模型自发生成高质量指令数据，不需要 seed prompt，质量显著高于 Alpaca/Self-Instruct 类方法。
-
-## 数据课程（Data Curriculum）
-
-数据不是一次性全喂，先易后难、先通用后专业会显著影响最终效果。
-
-9. **LIMA: Less Is More for Alignment**（Zhou et al., 2023，Meta）  
-   链接：https://arxiv.org/abs/2305.11206  
-   看点：仅 1000 条精心挑选的 SFT 数据就能达到强指令跟随能力。和 LIMO 的逻辑在 SFT 阶段的对应版本——质量 >> 数量。
-
-10. **Scaling Laws for Data Constrained Language Models**（Muennighoff et al., 2024）  
-    链接：https://arxiv.org/abs/2305.16264  
-    看点：数据重复几次的影响——结论是高质量数据重复 4 次比低质量数据不重复更好，为"精选小数据集多轮训练"提供了理论依据。
-
-## 核心认知
-
-数据工程的完整图景是：**过滤/去重**（ccNet/DCLM）→ **合成**（Phi）→ **质量提升**（AlpaGasus/Deita）→ **混合配方**（DoReMi）→ **课程安排**（Annealing/LIMA）。质量提升这一步之前常被跳过，但它往往是小数据集训练效果的关键杠杆。
+数据工程的各个环节不是孤立技巧的堆砌，而是围绕同一个核心权衡展开的：**量 vs 质、多样性 vs 专精、真实数据 vs 合成数据**。每个环节的选择都会影响下一个环节的约束。
 
 ---
 
-相关：[自动驾驶数据工程](data-engineering-av.md) — 同一套思维在不同模态的应用
+## 一、预训练数据工程
+
+预训练的数据工程有一条主决策链：
+
+```
+原始来源（Common Crawl / 代码 / 书籍 / ...）
+    ↓ 语言识别 + 粗过滤
+    ↓ 去重（URL-level → Document-level → Line-level）
+    ↓ 质量过滤
+    ↓ 配比：各域比例怎么定
+    ↓ Annealing：最后阶段的数据课程
+```
+
+### 1.1 来源获取与清洗
+
+预训练数据的主体是网页文本（Common Crawl），但原始爬取数据中绝大多数是低质量内容——乱码、模板、广告、重复 boilerplate。清洗的核心问题是：**用什么信号判断一篇文档值得保留？**
+
+- **[ccNet](../20-concepts/ccnet.md)**（Wenzek et al., 2019）：困惑度过滤 + 去重的 pipeline 奠基工作。用 KenLM 打困惑度分，低困惑度（≈ 流畅自然语言）的文档保留，高困惑度（≈ 乱码或模板）丢弃。被 Llama 1/2、BLOOM 等直接采用。
+- **[Gopher](../30-papers/gopher-2112.11446.md)**（Rae et al., 2021，DeepMind）：提出基于重复 n-gram 的启发式过滤，检测"大量重复段落"——这类文档不是乱码，但信息密度极低（如日志、爬虫模板）。Llama 3 直接引用了这个方法。
+- **[FineWeb](../20-concepts/fineweb.md)**（HuggingFace, 2024）：系统比较了多种过滤策略（ccNet 式困惑度 vs 启发式 vs 模型打分），并开源了 15T tokens 的高质量英语预训练数据集。核心发现：针对"教育价值"训练的分类器（FineWeb-Edu）比困惑度过滤效果好得多。
+- **[DCLM](../30-papers/dclm-2406.11794.md)**（Li et al., 2024）：把数据过滤策略变成系统可比较的研究变量——固定模型架构和训练量，只改数据过滤方式，对比效果。结论：用强模型（fastText / BERT 级别）基于质量打分过滤，比 KenLM 困惑度过滤显著更好。
+
+**2026 年视角**：KenLM 困惑度过滤是 2019–2022 的主流，已被模型驱动的质量过滤取代。[fastText](../20-concepts/fasttext.md) 作为语言识别工具仍然是标准配置，但作为质量过滤器已经退出主流。
+
+### 1.2 去重
+
+去重的核心问题是：**哪些文档"本质上是同一份内容"？**
+
+重复数据的危害不只是"浪费计算"，更重要的是它会让模型过度记忆某些内容，降低泛化能力，并且会在评测集上造成数据污染。
+
+- **URL-level**：同一 URL 只保留最新版本，用精确哈希实现，是管道最前端最便宜的一步。
+- **Document-level**：[MinHash](../20-concepts/minhash.md)（Broder, 1997）做全局近重复检测——两篇内容相似度超过阈值（如 Jaccard > 0.8）只保留一份。TB 级数据上不可替代。
+- **Line-level**：ccNet 风格，每桶 30M 文档中出现超过 6 次的行视为 boilerplate 删除。处理"不同页面共享相同页脚/导航栏"的情况。
+
+### 1.3 质量过滤
+
+过滤的核心问题：**质量的代理指标是什么，谁来打分？**
+
+历史上用的代理指标依次升级：
+
+| 代理指标 | 工具 | 偏差 |
+|---|---|---|
+| 语言流畅性 | KenLM 困惑度 | 偏向正式文体，口语化/对话/创意写作被误杀 |
+| "像维基百科引用的文本" | fastText 分类器 | 系统性偏向百科风格，post-training 有价值的对话数据被过滤 |
+| "教育价值" | FineWeb-Edu 分类器 | 对通用网页文本效果好，对代码/数学需要专项处理 |
+| 强模型直接打分 | GPT-4 / LLM-as-judge | 成本高，但质量最准，适合精选小数据集 |
+
+**[DCLM](../20-concepts/dclm.md)** 的核心贡献就是系统量化了这些代理指标的差距。
+
+### 1.4 域配比：各来源比例怎么定
+
+清洗好的数据来自不同来源（网页、代码、书籍、论文、多语言……），**如何混合这些来源的比例，比单个来源的质量更关键**。
+
+这是一个优化问题：给定总计算预算，找到让验证 loss 最低（或让下游任务最好）的各域权重向量。
+
+- **[DoReMi](../30-papers/doremi-2305.10429.md)**（Xie et al., 2023）：用一个小代理模型（280M）自动搜索最优域权重，再用搜到的权重训练大模型（8B）。核心机制是 Group DRO：找让所有域"最差表现最好"的鲁棒最优权重，而不是某个特定 benchmark 的最优。实测在 The Pile 上把 8B 模型的有效训练速度提升 2.6×。
+- **[Data Mixing Laws](../30-papers/data-mixing-laws-2403.16952.md)**（2024，ICLR 2025）：把 scaling law 的思路用到配比问题上，用指数函数拟合"某域比例 → 该域验证 loss"的关系，再嵌套预测整体最优配比。核心价值：小模型实验（70M）预测大模型（1B）的最优配比，大幅节省搜索成本。
+- **[DolmIno](../20-concepts/dolmino.md)**（Allen AI）：量化不同数据来源对不同能力的贡献——代码数据对推理的贡献、多语言数据对各语言性能的影响等。是配比决策的实证参考。
+
+**Llama 3 的实践**：用小模型 scaling law 实验预测大模型性能，通过实验确定预训练配比（通用 50% / 数学+推理 25% / 代码 17% / 多语言 8%），最后 annealing 阶段大幅上采样高质量数学和代码数据。这是目前工业界最成熟的应用方式，不是直接套用任何一个公式。
+
+### 1.5 数据受限时怎么办
+
+[Chinchilla](../30-papers/chinchilla-2203.15556.md) 假设数据无限，但现实中许多语言、专业领域的高质量文本很快会被耗尽。
+
+- **[Scaling Data-Constrained Language Models](../30-papers/scaling-data-constrained-lms-2305.16264.md)**（Muennighoff et al., 2023，NeurIPS）：数据受限时，重复训练数据 ≤4 epoch 几乎无损，超过后收益按指数衰减（半衰期约 16 epoch）。数据受限下的最优分配应**多加 epoch、少加参数**，与 Chinchilla 反向。
+- **合成数据**（见下文第二节 → 第三节的合成数据路线）：用强模型生成目标域数据，是突破真实数据天花板最直接的手段。[Phi-1](../30-papers/phi-1-2306.11644.md) 是代码域的早期验证，2025 年后合成数据已经成为数学和推理数据的主要来源。
+- **域外数据迁移**：[Scaling Data-Constrained LMs](../30-papers/scaling-data-constrained-lms-2305.16264.md) 还验证了：加入代码数据（The Stack）可以使自然语言任务性能等效于多一倍独立自然语言数据，说明不同域之间存在显著正迁移。
+
+### 1.6 Annealing：最后一公里
+
+Annealing 是预训练的最后阶段：在 cosine decay 学习率归零前，**大幅上采样高质量数据**（高质量网页精选、教科书、数学、代码），同时维持基础 token 预算。
+
+作用有两个：一是让模型在"最值得记住"的数据上做最后的收敛；二是可以用很低的成本评估一个小数据集是否值得加入（用 Annealing 实验而不是跑完整的 scaling law 实验）。
+
+Llama 3 在 Annealing 阶段把高质量数学和代码的比例大幅提升，是 Annealing 逻辑最直观的工业验证。详见 [Llama 3](../30-papers/llama-3-herd-of-models.md) 3.1.3 节。
+
+### 1.7 代码与数学的专项管道
+
+代码和数学不能用通用网页过滤器处理，需要独立的 pipeline：不同的 tokenizer 处理（保留缩进结构）、语言级别的去重（跨仓库的代码克隆检测）、执行验证（代码能不能跑通）。
+
+详见 [Domain-Specific Pipeline（代码与数学）](../20-concepts/domain-specific-pipeline-code-math.md)。
+
+---
+
+## 二、后训练数据工程（SFT）
+
+后训练的数据工程回答另一个问题：**用什么样的（指令, 回复）对，才能最高效地激活基础模型已有的能力，并让它学会"有用地回答"？**
+
+### 2.1 数据从哪里来：合成数据路线的演化
+
+这条路线从"怎么获得足够多的指令数据"，演化到"怎么获得足够好的指令数据"，再到"怎么自动大规模生成高质量指令数据"。
+
+**第一代：模型自举（2022–2023）**
+
+- **[Self-Instruct](../30-papers/self-instruct-2212.10560.md)**（Wang et al., 2022）：用 GPT-3 从 175 个人工种子指令出发，自举生成 52K 条（指令, 输入, 输出）三元组，再用这些数据 fine-tune GPT-3 本身。这是"模型生成训练数据来对齐自己"这条路线的起点。
+- **[Unnatural Instructions](../30-papers/unnatural-instructions-2212.09689.md)**（Honovich et al., 2022）：更激进——只用 15 个种子样本，让模型全自动生成 24 万条指令数据，质量媲美人工众包 SUPER-NATURALINSTRUCTIONS 的实证。
+- **[Stanford Alpaca](../30-papers/stanford-alpaca.md)**（2023）：把 Self-Instruct 工程化，用 GPT-3.5 生成 52K 条数据，$600 复现 InstructGPT 级别的指令跟随能力，把这条路线变成任何团队可操作的 recipe。
+
+**第二代：更强的教师模型，更高的数据质量（2023）**
+
+- **[Instruction Tuning with GPT-4](../30-papers/instruction-tuning-with-gpt-4-2304.03277.md)**（Peng et al., 2023）：把教师从 GPT-3.5 换成 GPT-4，同时生成指令数据和偏好比较数据。首次系统验证 GPT-4 蒸馏路线，并证明 GPT-4 生成的比较数据可以直接训练 reward model。
+- **[Vicuna](../30-papers/vicuna-open-source-chatbot.md)**（2023）：不生成数据，而是收集真实用户与 ChatGPT 的对话（ShareGPT），把数据来源从"模型自举"转向"真实人类意图"。从单轮指令推进到多轮对话场景。
+
+**第三代：自动化质量控制，无需人工种子（2024）**
+
+- **[MagPie](../30-papers/magpie-2406.08464.md)**（Xu et al., 2024，ICLR 2025）：利用对齐好的模型（Llama 3 Instruct）的 chat template 结构，**不提供任何 seed prompt**，直接触发模型自发生成用户指令，再让同一个模型回答。百万量级，质量显著高于 Alpaca/Self-Instruct 类方法。核心洞察：对齐好的模型已经内化了"什么样的用户指令是合理的"，chat template 就足以触发这种先验。
+
+### 2.2 数据怎么筛：质量 > 数量
+
+数据生成之后，怎么从中挑出最有价值的子集？
+
+- **[AlpaGasus](../30-papers/alpagasus-2307.08701.md)**（Chen et al., 2023）：用 ChatGPT 对 Alpaca 52K 逐条打分（1–5 分），只保留高分的 9K 条，fine-tune 效果反超原版 52K。噪声数据不只是"没用"——它会主动拉低模型质量。这是"数据质量 > 数据数量"的早期实证。
+- **[Deita](../30-papers/deita-2312.15685.md)**（Liu et al., 2024，ICLR 2024）：系统研究"什么是高质量 SFT 数据"。核心发现：**复杂度（instruction complexity）**和**质量（response quality）**是两个独立维度，需要同时高才有效；此外**多样性**是第三个独立维度——高质量但高度相似的数据集不如高质量且多样的小数据集。提出了基于 LLM 打分的可自动化评分流程，从 300K 中筛出 6K/10K 条数据，效果超越全量。
+
+### 2.3 需要多少数据：LIMA 与 LIMO 的启示
+
+- **[LIMA](../30-papers/lima-2305.11206.md)**（Zhou et al., 2023，NeurIPS）：LLaMA 65B + 1000 条精心挑选的 SFT 数据，无 RLHF，达到强指令跟随能力。核心假设（Superficial Alignment Hypothesis）：对齐主要教的是"格式和风格"，不是知识——知识在预训练阶段已经学好，SFT 只需要告诉模型"用这种格式回答"。1000 条高质量 > 52000 条混杂数据。
+- **[LIMO](../30-papers/limo-2502.03387.md)**（Ye et al., 2025）：817 条高质量数学推理数据激发强推理能力，在 AIME 上超越用 100 倍数据训练的模型。LIMA 在 SFT 一般能力上的结论，在推理领域的对应验证——少量高质量推理示例足以激活预训练阶段积累的推理潜力。
+
+这两篇放在一起说明了一个重要边界：**数量的边际价值在质量足够高时急剧下降，但"够高"的定义在不同任务上不同**——通用对齐任务 1000 条够，推理任务 817 条够，但需要覆盖多样场景的代码 agent 可能需要更多。
+
+---
+
+## 三、贯穿两个阶段的原理
+
+### 3.1 数据飞轮：模型反哺数据
+
+预训练和后训练都有同一个结构：**更好的模型可以帮助生成或筛选更好的数据，更好的数据再训出更好的模型**。
+
+- 预训练：DCLM 证明用更好的模型做质量过滤，比用 KenLM 的效果更好；Llama 3 用小模型实验预测大模型的最优数据配比。
+- 后训练：AlpaGasus 用 ChatGPT 打分筛选 Alpaca 数据；MagPie 用对齐好的模型生成新的对齐数据；Deita 用 LLM 给复杂度和质量打分。
+
+这个飞轮在自动驾驶里有完全同构的形式：详见 [自动驾驶数据工程](data-engineering-av.md)。
+
+### 3.2 合成数据 + 验证：突破真实数据天花板
+
+真实数据的核心约束是：**稀缺领域（高质量数学推理、复杂代码、专业知识）的人工产出速度远低于模型训练的消耗速度**。
+
+解法是合成数据——用强模型生成，但生成之后需要验证器（verifier）过滤：
+
+- 代码：能不能通过单元测试
+- 数学：答案能不能被形式化验证器验证
+- 推理：能不能被另一个模型或多数投票确认
+
+没有验证的合成数据质量不可控（强模型的错误会被蒸馏进小模型）；有了验证，合成数据的质量可以超过互联网上的真实数据。
+
+详见 [Synthetic Data with Verification](../20-concepts/synthetic-data-with-verification.md)。Phi-1/2/3 是这条路线在通用能力上的早期验证，2025 年后已经成为数学和代码领域的主流来源。
+
+### 3.3 核心权衡矩阵
+
+| 维度 | 一端 | 另一端 | 关键论文 |
+|---|---|---|---|
+| 量 vs 质 | 大量噪声数据 | 少量精选数据 | AlpaGasus, LIMA, LIMO |
+| 通用 vs 专精 | 平衡多域 | 上采样目标域 | DoReMi, Annealing |
+| 真实 vs 合成 | 纯真实数据 | 合成 + 验证 | Phi-1, Synthetic Data |
+| 一次性 vs 迭代 | 固定数据集 | 数据飞轮 | DCLM, MagPie |
+| 人工标注 vs 模型打分 | 人工偏好标注 | LLM-as-judge | AlpaGasus, Deita |
+
+没有普遍最优的选择——每个决策点的最优解取决于计算预算、目标任务、以及当前"瓶颈在哪里"。
+
+---
+
+相关：[自动驾驶数据工程](data-engineering-av.md) — 同一套决策逻辑在不同模态的应用
