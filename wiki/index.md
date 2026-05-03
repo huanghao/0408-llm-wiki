@@ -77,6 +77,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Chinchilla Scaling Laws](30-papers/chinchilla-2203.15556.md): 固定 FLOPs 下参数量与 token 数应等比例扩大（~20× rule），当时大模型普遍过大欠训；70B Chinchilla 以同等计算全面超越 280B Gopher，NeurIPS 2022
 - [Scaling Data-Constrained Language Models](30-papers/scaling-data-constrained-lms-2305.16264.md): 数据受限场景下重复数据最多 4 epoch 几乎无损，超过后收益递减；最优分配应多加 epoch 少加参数，NeurIPS 2023
 - [Are Emergent Abilities a Mirage?](30-papers/emergent-abilities-mirage-2304.15004.md): 涌现能力是评估指标非线性的人工产物，换用线性指标即变为平滑提升；数学证明 + 视觉模型实验，NeurIPS 2023 Oral
+- [PaLM: Scaling Language Modeling with Pathways](30-papers/palm-2204.02311.md): Google 540B 密集 Transformer，Pathways 系统 6144 TPU v4 训练，提出 MFU 效率度量，CoT 推理和多语言 SOTA，2022
 - [开放权重模型全景（2023–2026-05）](30-papers/open-weight-models-landscape.md): 从 Llama 2 到 Qwen3 / DeepSeek-R1 / OLMo 2 / Qwen3-Coder 的开放权重生态总览
 
 ## Comparisons
