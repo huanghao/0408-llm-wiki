@@ -42,7 +42,11 @@ $$C_{\text{token}} \approx 6N \quad \Rightarrow \quad \text{MFU} \approx \frac{\
 
 **MFU 的关键设计原则：只看"模型本身需要多少 FLOPS"，与实现细节无关**，因此不同团队、不同硬件、不同实现的数字可以直接横向比较。
 
-在 PaLM 之前，大家用的是 **HFU（Hardware FLOPs Utilization）**，它把实际执行的所有 FLOPS（包括工程优化引入的额外计算）都算进去。问题在于一个常见的工程技巧——**activation recomputation**：
+在 PaLM 之前，大家用的是 **HFU（Hardware FLOPs Utilization）**，它把实际执行的所有 FLOPS（包括工程优化引入的额外计算）都算进去。
+
+> **HFU 怎么算？** HFU = 实际执行的 FLOPs / (硬件峰值 FLOPS × 时间)。分子"实际执行的 FLOPs"通常来自两类来源之一：① **硬件性能计数器**（performance counters）——NVIDIA GPU 上可以用 `nvprof`、`nsys`（Nsight Systems）或 DCGM 等工具读取芯片内部的 FLOP 计数寄存器，类似 `gpu-top` 但更精确；② **分析式估算**——根据 CUDA kernel 的调用次数和每个 kernel 的 FLOP 复杂度手动计算。两种方式都比 MFU 的测量麻烦得多，且结果依赖于实现细节（比如 recomputation 有没有开启）。这就是 HFU 在不同团队之间不可比的根本原因——分子测的东西不一样。MFU 完全绕开了这个问题：分子只需要一个 tokens/s，而 tokens/s 只需要秒表就能测。
+
+问题在于一个常见的工程技巧——**activation recomputation**：
 
 训练时反向传播需要用到前向传播的中间激活值（每一层的输出）。朴素做法是把所有激活值都存在显存里，但大模型的激活值非常大（可能占几十 GB），显存装不下。Activation recomputation 的做法是：前向传播时不保存激活值，反向传播需要时重新算一遍前向。这样显存大幅减少，代价是多做了约 $+33\%$ 的计算量。
 

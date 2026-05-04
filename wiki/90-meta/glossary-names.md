@@ -1,0 +1,32 @@
+# 论文和模型名称词源
+
+LLM 论文喜欢用缩写、神话人物、音乐术语、地名当名字，真实含义往往藏在附录里或根本不解释。
+
+| 名称 | 全称 / 词源 | 梗或来源 |
+|---|---|---|
+| **Alpaca** | Stanford Alpaca | 羊驼，骆驼科动物，LLaMA 的亲戚——Stanford 用 Self-Instruct 方法在 LLaMA 上做指令微调，命名沿用"骆驼科"主题 |
+| **BPE** | **B**yte **P**air **E**ncoding | 数据压缩算法的名称，原本由 Philip Gage 于 1994 年提出用于压缩，被 Sennrich et al. 2016 引入 NLP 做 subword tokenization |
+| **ccNet** | **C**ommon **C**rawl **Net**work（pipeline）| 直接描述：用于处理 Common Crawl 数据的网络（管线），无特别梗，功能命名 |
+| **Chinchilla** | 无缩写，就是"龙猫/毛丝鼠" | DeepMind 用来修正 Gopher 的模型。Chinchilla（毛丝鼠）比 Gopher（囊地鼠）小——对应论文的核心发现：更小的模型用更多数据训练，比 Gopher 这样"过大欠训"的模型更高效 |
+| **DCLM** | **D**ata**C**omp for **L**anguage **M**odels | DataComp 是一个数据竞赛框架（"DataComp-for-LM"），LM 前面的 DC 对应 "DataComp"。DataComp 本身是"Data Competition"的缩写，强调用竞赛方式找最优数据过滤策略 |
+| **Deita** | **D**ata-**E**fficient **I**nstruction **T**uning for **A**lignment | "data"的变形拼写，暗示数据效率是核心。deita 不是已有词汇，纯粹是拼写游戏 |
+| **Dolma** | **D**ata f**o**r **O**pen **L**anguage **M**odels' **A**ppetite | AI2 的 3T token 开放语料库。dolma 也是中东/地中海料理中的"填馅蔬菜"（如用葡萄叶包的米饭），契合"喂饱语言模型"的隐喻 |
+| **DoReMi** | **Do**main **Re**weighting with **Mi**nimax optimization | 音乐 solfège（唱名法）的前三个音节 Do-Re-Mi，对应算法的三个核心步骤：训练参考模型（Do）、用 minimax 优化权重（Re）、用优化后权重训练大模型（Mi） |
+| **DPO** | **D**irect **P**reference **O**ptimization | RLHF 的简化替代，"direct"意思是不需要单独训练 reward model，直接在 LM 上优化偏好目标 |
+| **FineWeb** | Fine（好的）+ Web（网络爬取）| HuggingFace 的高质量网页数据集，"fine"双关：精细过滤 + 高质量，无深层梗 |
+| **Gopher** | 无缩写，就是"囊地鼠" | DeepMind 的 280B 模型。DeepMind 用动物命名自家模型系列（Flamingo、Chinchilla、Gopher）。囊地鼠（gopher）是北美的一种挖地穴的小动物，无明显隐喻，纯粹是动物主题 |
+| **LIMA** | **L**ess **I**s **M**ore for **A**lignment | 来自秘鲁首都利马（Lima），同时对应论文主张"少量高质量数据就够"。meta 学术梗：LIMA 是对 RLHF 繁复流程的反叛，"Less is More"这个短语本身来自建筑师 Mies van der Rohe |
+| **LIMO** | **L**ess **I**s **M**ore for **R**easoning（作者用 O 结尾构成呼应）| 对 LIMA 的致敬/呼应——LIMA 是对齐领域的"少即是多"，LIMO 是推理领域的"少即是多"。limo 也是豪华轿车（limousine 缩写），但论文没有显式用这个梗 |
+| **LLaMA** | **L**arge **L**anguage **M**odel **M**eta **A**I | Meta 的开源基础模型系列，注意大写的 LLaMA，不是骆驼（llama），但发音和骆驼（llama）相同，确有骆驼隐喻——骆驼以耐力著称，对应"高效/开源"的定位 |
+| **MagPie** | **Mag**netic **P**rompt-**I**nduced **E**lution（作者解释）| 喜鹊（magpie），善于模仿人类语言——恰好契合"用 aligned LLM 模仿用户提问"的方法。喜鹊也以收集闪亮东西闻名，对应"从模型里提取有价值数据" |
+| **MCTS** | **M**onte **C**arlo **T**ree **S**earch | 蒙特卡洛树搜索。蒙特卡洛（Monaco 的卡西诺城市）是"靠随机模拟估计期望值"方法的统称，来源于 20 世纪中期核武器模拟计算中的赌博隐喻 |
+| **MFU** | **M**odel **F**LOPs **U**tilization | 训练效率度量，PaLM 论文（2022）提出。FLOPs = floating point operations，MFU 是对峰值理论算力的利用率 |
+| **OLMo** | **O**pen **L**anguage **M**odel | AI2 的完全开放语言模型（模型+数据+代码全开放），olmo 也是西班牙语"榆树"（elm），AI2 的其他项目也有植物命名偏好 |
+| **PaLM** | **P**athways **L**anguage **M**odel | Google 的 540B 模型，用 Pathways 分布式系统训练，"palm"也是棕榈树，Google 产品常见植物命名风格（TPU Pod 的代号也用植物） |
+| **Phi** | 希腊字母 φ | Microsoft Research 的小模型系列（phi-1, phi-2, phi-3）。φ 在数学里常代表"黄金比例"或各类函数，隐喻"小而精"的比例感。phi-1 专注代码，phi-2/phi-3 扩展到通用推理 |
+| **PPO** | **P**roximal **P**olicy **O**ptimization | RL 中的策略优化算法，"proximal"强调每步更新不能离上一步太远（近端约束），OpenAI 2017 年提出 |
+| **Quiet-STaR** | **St**eps **a**nd **R**ationale（原 STaR 论文），Quiet 代表"静默思考" | STaR（Self-Taught Reasoner，2022）的扩展版，Quiet 前缀表示推理在 `<think>` token 内部进行，对最终输出"静默"不可见。STaR 本身命名来自"star"（明星），隐喻"自我成长" |
+| **ReStar** | **Re**inforced **S**elf-**T**r**a**ining with **R**easoning | 对 STaR 的强化学习扩展，Re- 前缀表示"用 RL 重新训练"，也暗示"再次成为明星（ReSTAR）"的双关 |
+| **RLHF** | **R**einforcement **L**earning from **H**uman **F**eedback | 描述性缩写，无梗。由 Christiano et al. 2017 提出，InstructGPT/ChatGPT 的对齐核心技术 |
+| **Self-Instruct** | 无缩写，描述性命名 | 字面意思：模型用自己生成的指令来对齐自己（self instruction）。这是该领域命名最透明的论文之一，没有刻意造梗 |
+| **Vicuna** | Vicuña（骆马）| 南美骆驼科，LLaMA 的另一亲戚——LMSYS 用 ShareGPT 对话数据微调 LLaMA，骆驼族谱继续延伸 |

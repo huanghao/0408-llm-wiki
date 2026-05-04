@@ -39,6 +39,9 @@ This is the content-oriented entry point for the LLM wiki.
 - [ONNX](20-concepts/onnx.md): 跨框架模型中间格式，导出、运行时、图优化、量化全览
 - [量化（Quantization）](20-concepts/quantization.md): 低精度部署为什么是开放权重生态的基础设施
 
+**推理与搜索**
+- [Monte Carlo Tree Search（MCTS）](20-concepts/mcts.md): UCB 平衡探索利用的树搜索算法，AlphaGo 核心组件，LLM 推理时用于结构化的 test-time compute 搜索
+
 **Scaling 基础**
 - [幂律与 Scaling（Power Law）](20-concepts/power-law-and-scaling.md): 幂律是什么、翻倍法则、在 LLM/语言/城市/地震等领域的普遍出现，以及为何指数小意味着收益递减
 
@@ -78,6 +81,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Scaling Data-Constrained Language Models](30-papers/scaling-data-constrained-lms-2305.16264.md): 数据受限场景下重复数据最多 4 epoch 几乎无损，超过后收益递减；最优分配应多加 epoch 少加参数，NeurIPS 2023
 - [Are Emergent Abilities a Mirage?](30-papers/emergent-abilities-mirage-2304.15004.md): 涌现能力是评估指标非线性的人工产物，换用线性指标即变为平滑提升；数学证明 + 视觉模型实验，NeurIPS 2023 Oral
 - [PaLM: Scaling Language Modeling with Pathways](30-papers/palm-2204.02311.md): Google 540B 密集 Transformer，Pathways 系统 6144 TPU v4 训练，提出 MFU 效率度量，CoT 推理和多语言 SOTA，2022
+- [Dolma: an Open Corpus of Three Trillion Tokens](30-papers/dolma-2402.00159.md): AI2 发布的 3T token 开放英语预训练语料库，配套开源 Dolma Toolkit，OLMo 系列数据基础，数据策划过程最透明的同类语料库，ACL 2024
 - [开放权重模型全景（2023–2026-05）](30-papers/open-weight-models-landscape.md): 从 Llama 2 到 Qwen3 / DeepSeek-R1 / OLMo 2 / Qwen3-Coder 的开放权重生态总览
 
 ## Comparisons
@@ -92,6 +96,11 @@ This is the content-oriented entry point for the LLM wiki.
 
 ## Meta
 
+- [论文名称词源](90-meta/glossary-names.md): Gopher/Dolma/DoReMi/LIMA/Phi 等名字的含义、梗和来源，按字母序排列
+- [研究者简介](90-meta/glossary-people.md): wiki 高频作者，按研究方向分组（Scaling/数据/对齐/推理/小模型/系统）
+- [Benchmark 速查表](90-meta/glossary-benchmarks.md): wiki 里出现的评测集，按能力分类（综合/常识/QA/推理/NLI/数学/代码），含测什么、评测方式、污染风险
+- [数据集速查表](90-meta/glossary-datasets.md): 预训练语料、指令微调数据集、评测数据集，含规模、来源机构、被哪些模型使用
+- [机构与实验室速查](90-meta/glossary-orgs.md): Google DeepMind/OpenAI/Anthropic/Meta/AI2 等机构历史、分拆关系、代表工作，以及常见混淆点
 - [Knowledge Base Conventions](90-meta/conventions.md): page rules and maintenance expectations.
 - [Lint Report 2026-04-28](90-meta/lint-20260428.md): wiki health check findings and action items.
 - [Lint Report 2026-05-03](90-meta/lint-20260503.md): wiki health check findings and action items.
