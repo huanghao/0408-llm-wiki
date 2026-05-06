@@ -29,7 +29,7 @@ def rollout(action):
     return 1 if random.random() < TRUE_WIN_RATES[action] else 0
 
 
-def mcts(n_iter=200):
+def mcts(n_iter=500):
     for i in range(1, n_iter + 1):
         total_n = sum(s["N"] for s in stats.values())
         # Selection：选 UCB 最高的动作
@@ -40,7 +40,7 @@ def mcts(n_iter=200):
         stats[chosen]["W"] += result
         stats[chosen]["N"] += 1
 
-        if i in (10, 50, 100, 200):
+        if i in (10, 50, 100, 200, 500):
             print(f"\n迭代 {i:3d} 次后：")
             for a in ACTIONS:
                 s = stats[a]

@@ -20,6 +20,8 @@ This is the content-oriented entry point for the LLM wiki.
 **训练与优化**
 - [Instruction Tuning](20-concepts/instruction-tuning.md): 指令微调的数据来源、演化路线与关键论文导读
 - [Loss Functions](20-concepts/loss-functions.md): NLL、KL、DPO、REINFORCE 的选择决策树
+- [强化学习基础](20-concepts/rl-fundamentals.md): 从监督学习的边界出发，覆盖 agent/环境/策略/V值/Q值/Advantage/REINFORCE/Actor-Critic，配老虎机和格子世界代码
+- [参数调度：衰减、Warmup 与 Clip](20-concepts/parameter-scheduling.md): 指数/线性/余弦/阶梯/Warmup+余弦五种调度形式对比，以及 PPO clip 为什么不是衰减
 - [RLHF](20-concepts/rlhf.md): InstructGPT、DPO、PPO、GRPO 的完整对比
 - [REINFORCE](20-concepts/reinforce.md): 策略梯度基础算法，奖励/Return/Advantage 的区别
 - [PPO 逐行讲解](20-concepts/ppo-explained.md): PPO 的梯度机制与监督学习的区别
@@ -41,6 +43,9 @@ This is the content-oriented entry point for the LLM wiki.
 
 **推理与搜索**
 - [Monte Carlo Tree Search（MCTS）](20-concepts/mcts.md): UCB 平衡探索利用的树搜索算法，AlphaGo 核心组件，LLM 推理时用于结构化的 test-time compute 搜索
+- [UCB1 与多臂老虎机问题](20-concepts/ucb-bandit.md): Auer et al. 2002 的经典 bandit 算法，UCB1 公式的来源与遗憾界理论，MCTS 和在线决策的理论基础
+- [UCT: Bandit Based Monte-Carlo Planning](30-papers/uct-kocsis-szepesvari-2006.md): 把 UCB1 应用到树搜索每个节点，提出 UCT 算法，现代 MCTS 的奠基之作，AlphaGo 的直接前身，ECML 2006
+- [A Survey of Monte Carlo Tree Search Methods（Browne et al.）](30-papers/mcts-survey-browne-2012.md): MCTS 第一个五年（2006–2011）的系统综述，覆盖 UCT 推导、约 40 种增强（RAVE/UCB1-Tuned/FPU 等）、非游戏应用，IEEE TCIAIG 2012
 
 **Scaling 基础**
 - [幂律与 Scaling（Power Law）](20-concepts/power-law-and-scaling.md): 幂律是什么、翻倍法则、在 LLM/语言/城市/地震等领域的普遍出现，以及为何指数小意味着收益递减
@@ -62,14 +67,19 @@ This is the content-oriented entry point for the LLM wiki.
 - [Phi-2 / Phi-3](30-papers/phi-2-phi-3.md): 教科书质量路线扩展到通用推理，phi-3-mini 3.8B 匹敌 GPT-3.5，可本地运行于手机
 - [DoReMi](30-papers/doremi-2305.10429.md): 用小代理模型自动优化预训练数据 domain 配比，280M→8B 加速 2.6×
 - [LIMO](30-papers/limo-2502.03387.md): 817 条高质量 SFT 数据激发强数学推理能力
+- [rStar-Math](30-papers/rstar-math-2501.04519.md): MCTS 驱动的四轮自演化，7B SLM 数学推理达 o1-preview 水平；PPM 偏好训练替代精确 Q 值标注
 - [Quiet-STaR](30-papers/quiet-star-2403.09629.md): 让模型在每个 token 处静默思考，从普通文本中自发学习推理
 - [nuScenes](30-papers/nuscenes-1903.11027.md): 自动驾驶多传感器数据集，360° 全向感知基准
 - [nuPlan](30-papers/nuplan-2106.11810.md): 闭环 ML-based 自动驾驶规划基准，10,000+ 小时真实驾驶日志
+- [MetaDrive](30-papers/metadrive-2109.12674.md): 可组合自动驾驶 RL 模拟平台，BIG 算法程序化生成 + Waymo/Argoverse 真实数据导入，300 FPS 轻量运行，ScenarioNet 直接前身，TPAMI 2022
+- [ScenarioNet](30-papers/scenarionet-2306.12241.md): 统一场景描述格式整合 Waymo/nuScenes/nuPlan/L5/Argoverse，MetaDrive 模拟器支持闭环 RL/IL 和 AD stack 测试，NeurIPS 2023
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用
 - [Instruction Tuning with GPT-4](30-papers/instruction-tuning-with-gpt-4-2304.03277.md): 首次系统验证用 GPT-4 生成指令数据和比较数据来蒸馏开源 assistant
 - [Self-Instruct](30-papers/self-instruct-2212.10560.md): instruction tuning 合成数据路线起点，用模型自己生成 instruction / instance 再对齐自己
+- [Instruction Backtranslation](30-papers/instruction-backtranslation-2308.06259.md): 给无标注网页文本自动配指令，模型自评筛选高质量对，无蒸馏超越所有非蒸馏 LLaMA；ICLR 2024
 - [Unnatural Instructions](30-papers/unnatural-instructions-2212.09689.md): 15 个种子样本 → LLM 全自动生成 24 万条指令数据，合成数据媲美人工众包的实证
+- [WizardLM / Evol-Instruct](30-papers/wizardlm-evol-instruct-2304.12244.md): 用 LLM 迭代把简单指令进化成复杂版本，WizardLM-13B 在代码/数学上大幅超越 Vicuna，ICLR 2024
 - [AlpaGasus](30-papers/alpagasus-2307.08701.md): 用 ChatGPT 对 Alpaca 52k 数据打分，只取 9k 高质量样本训练反超原版——"数据质量 > 数据数量"的早期实证
 - [Stanford Alpaca](30-papers/stanford-alpaca.md): 把 Self-Instruct 工程化成低成本、可复现的开源 instruction-tuning recipe
 - [Vicuna](30-papers/vicuna-open-source-chatbot.md): 用 ShareGPT 多轮对话把开源 assistant 从 instruction 模式推进到 chat 模式
