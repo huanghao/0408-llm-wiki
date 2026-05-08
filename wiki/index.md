@@ -5,7 +5,9 @@ This is the content-oriented entry point for the LLM wiki.
 ## Overview
 
 - [Knowledge Base Overview](00-overview/knowledge-base-overview.md): repo purpose, structure, and operating model.
+- [Neural Combinatorial Optimization for VRP](00-overview/neural-vrp.md): 用 attention encoder-decoder + REINFORCE 端到端学习 VRP 启发式求解器；AM→POMO→混合 OR 的演化路线及 2026 年前沿
 - [AV Data Pipeline Architecture](00-overview/av-data-pipeline-architecture.md): 自动驾驶数据处理全链路架构概览
+- [自动驾驶模型评测全栈概览](00-overview/av-model-evaluation.md): 感知/预测/规划/端到端各层评测指标、主流 benchmark 及其局限，开环 vs 闭环的根本区别
 - [PNC Model Architecture](00-overview/pnc-model-architecture.md): PNC 神经网络模型的架构、规模与训练数据
 - [Tesla Data Engine](00-overview/tesla-data-engine.md): Karpathy 在 Tesla AI Day 演讲中描述的数据飞轮范式
 
@@ -20,7 +22,9 @@ This is the content-oriented entry point for the LLM wiki.
 **训练与优化**
 - [Instruction Tuning](20-concepts/instruction-tuning.md): 指令微调的数据来源、演化路线与关键论文导读
 - [Loss Functions](20-concepts/loss-functions.md): NLL、KL、DPO、REINFORCE 的选择决策树
+- [Softmax 与交叉熵](20-concepts/softmax-and-cross-entropy.md): softmax 求导过程，交叉熵损失与 softmax 的链式法则，与 Actor 梯度更新的对比
 - [强化学习基础](20-concepts/rl-fundamentals.md): 从监督学习的边界出发，覆盖 agent/环境/策略/V值/Q值/Advantage/REINFORCE/Actor-Critic，配老虎机和格子世界代码
+- [Bellman 方程](20-concepts/bellman-equation.md): V 值的自引用递推关系，策略迭代收敛的数学基础，TD 误差的来源
 - [参数调度：衰减、Warmup 与 Clip](20-concepts/parameter-scheduling.md): 指数/线性/余弦/阶梯/Warmup+余弦五种调度形式对比，以及 PPO clip 为什么不是衰减
 - [RLHF](20-concepts/rlhf.md): InstructGPT、DPO、PPO、GRPO 的完整对比
 - [REINFORCE](20-concepts/reinforce.md): 策略梯度基础算法，奖励/Return/Advantage 的区别
@@ -58,6 +62,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Synthetic Data with Verification](20-concepts/synthetic-data-with-verification.md): 合成数据与验证
 - [Minimax 博弈](20-concepts/minimax.md): 博弈论中对抗框架，GAN / RLHF reward hacking 的理论基础
 - [随机森林（Random Forest）](20-concepts/random-forest.md): 集成学习方法，bagging + 特征随机性的决策树集成
+- [高斯混合模型（GMM）](20-concepts/gaussian-mixture-model.md): K 个高斯加权叠加建模多峰分布，运动预测轨迹输出的主流方式，Winner-Takes-All loss 驱动多模态分化
 
 ## Papers
 
@@ -71,8 +76,16 @@ This is the content-oriented entry point for the LLM wiki.
 - [Quiet-STaR](30-papers/quiet-star-2403.09629.md): 让模型在每个 token 处静默思考，从普通文本中自发学习推理
 - [nuScenes](30-papers/nuscenes-1903.11027.md): 自动驾驶多传感器数据集，360° 全向感知基准
 - [nuPlan](30-papers/nuplan-2106.11810.md): 闭环 ML-based 自动驾驶规划基准，10,000+ 小时真实驾驶日志
+- [NAVSIM](30-papers/navsim-2406.15349.md): 非反应式仿真评测框架，用真实数据替代仿真器，PDM-Score 综合指标，CVPR 2024 竞赛 143 支队伍，NeurIPS 2024
+- [UniAD](30-papers/uniad-2212.10156.md): 规划导向端到端 AD，五模块 query 接口串联（跟踪/建图/运动预测/占据预测/规划），nuScenes 全面 SOTA，CVPR 2023 Best Paper
 - [MetaDrive](30-papers/metadrive-2109.12674.md): 可组合自动驾驶 RL 模拟平台，BIG 算法程序化生成 + Waymo/Argoverse 真实数据导入，300 FPS 轻量运行，ScenarioNet 直接前身，TPAMI 2022
 - [ScenarioNet](30-papers/scenarionet-2306.12241.md): 统一场景描述格式整合 Waymo/nuScenes/nuPlan/L5/Argoverse，MetaDrive 模拟器支持闭环 RL/IL 和 AD stack 测试，NeurIPS 2023
+- [TrafficGen](30-papers/trafficgen-2210.06609.md): 数据驱动交通场景生成，encoder-decoder + 自回归从 WOMD 学习车辆放置和长轨迹，生成数据改善 RL 安全性，ScenarioNet 场景嵌入工具，ICRA 2023
+- [Waymo Open Motion Dataset（WOMD）](30-papers/waymo-open-motion-dataset.md): Waymo 运动预测数据集，103K 场景×20s，HD map + agent 状态序列，运动预测 benchmark 标准，无原始传感器数据
+- [Argoverse Motion Forecasting](30-papers/argoverse-motion-forecasting.md): Argo AI 运动预测 benchmark，Brier-minFDE 为主指标（距离+置信度综合），速度自适应 MR 阈值，与 WOMD 互补
+- [Wayformer](30-papers/wayformer-2207.05844.md): 同质化 attention 架构家族，Early/Late/Hierarchical 三种融合策略系统对比，Early Fusion 最优，WOMD+Argoverse 双榜 SOTA，Waymo，ICRA 2023
+- [MTR: Motion Transformer](30-papers/mtr-2209.13508.md): Motion Query Pair（静态意图锚点+动态搜索查询）驱动迭代轨迹精化，WOMD 边际/联合预测双榜第一，Max Planck Institute，NeurIPS 2022
+- [MotionDiffuser](30-papers/motiondiffuser-2306.03083.md): 扩散模型学习多 agent 轨迹联合分布，置换不变 denoiser + PCA 压缩 + 推理时可微约束采样（attractor/repeller），WOMD SOTA，CVPR 2023 Highlight
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用
 - [Instruction Tuning with GPT-4](30-papers/instruction-tuning-with-gpt-4-2304.03277.md): 首次系统验证用 GPT-4 生成指令数据和比较数据来蒸馏开源 assistant

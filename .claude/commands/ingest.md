@@ -65,6 +65,14 @@
 
 更新 `wiki/index.md`，在对应区加入新条目。
 
+完成后，检查以下 glossary 是否需要补充条目：
+
+- `wiki/90-meta/glossary-names.md`：论文/模型名有新词源需要收录？
+- `wiki/90-meta/glossary-datasets.md`：出现了新数据集？
+- `wiki/90-meta/glossary-people.md`：出现了新作者？
+
+有则补充，无则跳过，不需要说明。
+
 ---
 
 ## 注意

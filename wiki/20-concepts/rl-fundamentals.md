@@ -123,6 +123,16 @@ $$V(s) = \mathbb{E}[G_t \mid \text{从状态 } s \text{ 出发，按当前策略
 
 V 值不知道是怎么到这个状态的，也不知道接下来要走哪步——它只是说"**身处这个状态，按现有策略，未来期望值是多少**"。
 
+> **G 为什么不直接计算？**
+>
+> $G_t$ 是一次实际走法的结果——你必须先完整走完一局，才能把 $R_t, R_{t+1}, \ldots$ 全部加起来。它是个**随机变量**，描述的是"某次具体的游戏里实际拿了多少"。每次走的结果不同，所以 $G_t$ 不是一个固定的数。
+>
+> $V(s)$ 才是**稳定的量**，需要算法显式地估计它。有两种方式：
+> - **动态规划（格子世界里的方法）**：利用 Bellman 方程 $V(s) = \sum_a \pi(a|s)\left[R(s,a) + \gamma \sum_{s'} P(s'|s,a) V(s')\right]$，从已知的奖励和转移概率反复迭代求解。状态少时可行（见 `rl_gridworld.py`）。
+> - **采样估计（REINFORCE / Actor-Critic）**：真实走一局，用实际的 $G_t$ 作为 $V(s)$ 的噪声估计；或用 Critic 网络直接预测 $V(s)$（见 `rl_actor_critic.py`）。
+>
+> 简单说：**G 是原材料（一次采样），V 是从大量原材料里提炼出的估计量**。代码里没有单独存 G，是因为 G 要么直接用完就扔（REINFORCE），要么被 Critic 吸收成 V 的参数（Actor-Critic）。
+
 ---
 
 ### 第三步：Q 值——"如果我在这个状态**先走这一步**，然后按策略走，期望多少"
@@ -143,6 +153,15 @@ V 是"你的策略在这个状态会做的选择的平均结果"——策略已�
 Q 是"如果第一步**指定走某个具体动作**，之后再按策略走，结果是什么"——它把第一步单独拿出来评估。
 
 关系：$V(s) = \sum_a \pi(a|s) \cdot Q(s,a)$，即 V 是各个动作的 Q 值按策略概率加权平均。
+
+> **V 和 Q 耦合在一起，先算哪个？**
+>
+> 这是个"先有鸡还是先有蛋"的问题。解法是**迭代**：先随机初始化 V，然后交替更新：
+> 1. 给定当前 V，用 Bellman 方程算出 Q（Q = 即时奖励 + γ × 下个状态的 V）
+> 2. 给定新的 Q，用策略改进选每格最优动作，更新 V
+> 3. 重复，直到 V 稳定（这叫**策略迭代**）
+>
+> 格子世界里 5 轮就收敛了，因为状态少。神经网络版本（Actor-Critic）也是同样的思路：Critic 先给出 V 的估计，Actor 用它算 Advantage 更新自己，Actor 好了 Critic 的训练数据质量也提升，两者互相"拔靴带"。迭代不需要从正确答案出发，只需要一个初始猜测，然后不断修正。
 
 格子世界里看输出：
 ```
@@ -166,6 +185,19 @@ $V(s)$ 是基准（按策略走的平均期望）。$A > 0$ 表示这个动作�
 投资类比：某个具体操作（买入/卖出）比"按你的正常策略操作"多赚或少赚多少。
 
 Advantage 的用处：训练时用它更新策略，因为它消除了"这个状态本身就好/差"的干扰——只保留"**这个动作相对于正常做法的额外贡献**"。比如一个好局面（V 很高），随便走一步都不差；我们不想因为这个就表扬"随便走一步"。Advantage 为 0 说明这个动作就是策略的正常选择，不需要特别表扬或惩罚。
+
+> **Advantage 和投资里的 Alpha/Beta 是同一个思路**
+>
+> 投资收益常被分解为：
+> - **Beta 收益**：市场整体涨跌带来的收益，持有指数基金就能获得，不需要主动判断
+> - **Alpha 收益**：超越市场基准的超额收益，来自主动选股/择时的能力
+>
+> RL 里：
+> - **V(s)** ≈ Beta——身处这个状态，按正常策略走的"市场基准收益"
+> - **Q(s,a)** ≈ "Beta + 某个主动操作的贡献"
+> - **Advantage A(s,a) = Q - V** ≈ **Alpha**——剥离掉状态本身的背景收益后，这个具体动作的纯主动价值
+>
+> "排除某种红利背景下，主动策略的价值"——这个表述非常准确。Advantage 就是在控制住"当前局面本身的质量"之后，这个动作的净增值。好局面里做了一个普通动作，Advantage ≈ 0（不是你选对了，是局面本来就好）；差局面里走了一步神来之笔，Advantage 大幅为正（这才是真正的技术价值）。
 
 ---
 
@@ -191,6 +223,8 @@ A(s,a)  → Q(s,a) - V(s)，这个动作比策略均值好多少
 ```
 python src/rl_gridworld.py
 ```
+
+> A\* 和 Bellman DP 都能在格子上找路，但一个是"地图已知的搜索"，一个是"地图未知的学习"——详见 [Bellman 方程：Bellman DP vs A\*](./bellman-equation.md#格子世界是同一件事)。
 
 ---
 
@@ -229,6 +263,25 @@ $$\delta_t = R_t + \gamma V(s_{t+1}) - V(s_t)$$
 
 含义：$R_t + \gamma V(s_{t+1})$ 是"实际得到的奖励加上下一状态的预期"，$V(s_t)$ 是 Critic 的预测。两者之差就是"这步比预期好了多少"——正的就提高 Actor 这个动作的概率，同时把 Critic 的预测往上调；负的反之。
 
+**TD error 和 Advantage 是同一件事吗？** 是近似。精确的 $A(s,a) = Q(s,a) - V(s)$，而 $Q(s,a) = R + \gamma V(s')$，代入得 $A = R + \gamma V(s') - V(s) = \delta_t$——公式完全一样。区别只在于：表格法里 V 是精确值，所以 A 是精确的；这里 Critic 还没收敛，V 是估计值，所以 $\delta_t$ 是带噪声的近似。详见 [Bellman 方程：Advantage 和 TD 误差](./bellman-equation.md)。
+
+**代码里的两行更新是什么意思？**
+
+```python
+critic_V[si] += LR_CRITIC * td_error          # Critic 更新
+actor_logits[si] += LR_ACTOR * td_error * grad_log_pi  # Actor 更新
+```
+
+先回答"监督学习的梯度从哪来"：监督学习里有一个损失函数（比如交叉熵），对每个参数求偏导，得到一个梯度向量，然后参数沿梯度反方向移动。梯度告诉你"参数往哪个方向动，损失会下降"。
+
+这里也是同样的逻辑，只是梯度是手动推导后直接写出来的，没有调用反向传播框架。**真实的 PyTorch/JAX 代码也会写成损失函数 + `.backward()`**，效果完全一样——手写是为了让代码逻辑透明，不被框架隐藏。两行更新的推导过程见文末附录。
+
+两个网络互相依赖：Critic 准确了，Actor 才能得到好的梯度信号；Actor 好了，Critic 见到的轨迹质量更高，估计也更准。
+
+**Actor-Critic 一定会收敛吗？** 不保证。表格法有严格的数学收敛证明（压缩映射）。Actor-Critic 是两个网络同时更新、互相依赖，理论上可能震荡——Critic 的误差影响 Actor 更新，Actor 变了又改变 Critic 见到的数据分布。格子世界里状态简单所以实验上收敛，但大规模问题里不稳定是常态，这也是 PPO 要加 clip 约束的根本原因。
+
+这个问题**有解，但没有银弹**。理论上在某些条件下（线性函数近似、足够小的学习率）可以证明收敛，但实践中神经网络是非线性的，只能靠工程手段提高稳定性：clip 约束（PPO）、分离目标网络（DQN）、多步 return（GAE）、熵正则（避免策略过早坍缩）。当前大模型训练（RLHF/GRPO）也没有理论收敛保证，靠的是调参经验和大量实验。
+
 **代码示例：Actor-Critic 训练格子世界（`src/rl_actor_critic.py`）**
 
 ```
@@ -239,8 +292,6 @@ python src/rl_actor_critic.py
 - 前 200 局：平均回报约 -1（随机乱走，经常掉陷阱）
 - 400 局后：平均回报 +4 到 +5（学会了绕开陷阱走向终点）
 - 最终策略和格子世界里用策略迭代找到的最优策略一致
-
-两个网络互相依赖：Critic 准确了，Actor 才能得到好的梯度信号；Actor 好了，Critic 见到的轨迹质量更高，估计也更准。
 
 ---
 
@@ -276,8 +327,130 @@ InstructGPT / DeepSeek-R1
 
 ---
 
+## 附录：Actor-Critic 两行更新的推导
+
+代码里的两行：
+
+```python
+critic_V[si] += LR_CRITIC * td_error
+actor_logits[si] += LR_ACTOR * td_error * grad_log_pi
+```
+
+代码里真正在"学习"的只有两个变量：`actor_logits`（状态×动作的二维数组）和 `critic_V`（状态到数值的向量）。其他都是无状态函数。两行更新就是在用 td_error 这个信号同时调整这两个变量。
+
+---
+
+### 问题一：为什么是加 td_error 而不是减？
+
+Critic 想最小化预测误差。损失是 td_error 的平方，对 `critic_V[si]` 求导得到的梯度是 `-td_error`。梯度下降是"减去梯度"，负负得正，所以变成"加上 td_error"。
+
+用数字理解：`td_error = +3` 说明这步实际比预期好 3 分，当前 `critic_V[si]` 低估了，应该往上调，所以加上去。`td_error = -2` 说明高估了，加一个负数就是往下调。详细推导见下方"Critic 推导"。
+
+---
+
+### 问题二：为什么先改 Critic 再改 Actor？
+
+顺序不影响结果。两行更新都用同一个 `td_error`，这个值在两行执行之前就已经算好存在变量里了。先改 Critic 不会影响 Actor 这一步用到的任何值，反过来也一样。这只是代码书写顺序，不是设计决策。
+
+---
+
+### 问题三：`grad_log_pi = one_hot(a) - probs` 为什么长这样？
+
+**logits 和 probs 是什么：** `actor_logits[si]` 是一个长度为 4 的向量（4 个方向各一个分数，可以是任意实数）。`probs = softmax(actor_logits[si])` 是把这 4 个分数压成 4 个概率，加起来等于 1。logits 是"原材料"，probs 是 softmax 处理后的概率。
+
+**`grad_log_pi` 的含义：** 它是"往 logits 的哪个方向调，能让刚才选的动作 `a` 的概率变大"。具体形式：动作 `a` 对应的位置是 `1 - probs[a]`（正数，调大），其他位置是 `-probs[k]`（负数，调小）——因为概率加起来必须等于 1，提高一个必须压低其他的。
+
+数学推导（softmax 的 log 导数）见 [Softmax 与交叉熵](./softmax-and-cross-entropy.md)。
+
+**和监督学习标签的关系：** 效果一样，但公式差一个负号——原因是操作方向相反。
+
+| | 监督学习 | Actor 更新 |
+|---|---|---|
+| 梯度公式 | `probs - one_hot(y)` | `one_hot(a) - probs` |
+| 更新方式 | **减去**梯度（梯度下降） | **加上**梯度（梯度上升） |
+| 实际效果 | 提高 `y` 的概率 | 提高 `a` 的概率 |
+
+展开看：监督学习对正确类别 `y` 的梯度是 `probs[y] - 1`（负数），减去它 → logits 加上 `1 - probs[y]`（正数）→ `y` 的概率上升。
+
+Actor 对动作 `a` 的梯度是 `1 - probs[a]`（正数），加上它 → logits 加上 `1 - probs[a]`（正数）→ `a` 的概率上升。
+
+**最终对 logits 的修改是一模一样的**——都是在 `a`/`y` 对应的位置加上 `1 - p`，在其他位置减去 `p`。符号抵消了。两种写法是同一件事的不同表达：一种从"损失最小化"出发，一种从"目标最大化"出发。
+
+区别是监督学习的"标签"是固定的正确答案，Actor 的"标签"是这次采样到的动作，权重是 `td_error`（这步有多好）。可以理解为：**Actor 在做带权重的软监督学习**——`td_error > 0` 时把这次动作当"正确答案"来学，`td_error < 0` 时反着学。
+
+---
+
+### 问题四：乘以 td_error 为什么让好动作概率变大？
+
+`actor_logits[si] += LR_ACTOR * td_error * grad_log_pi`
+
+`grad_log_pi` 是"让动作 `a` 概率变大的方向"。
+
+- `td_error = +2`：加上 `+2 × grad_log_pi`，logits 沿让动作 `a` 概率变大的方向移动 → 好动作概率上升。✓
+- `td_error = -2`：加上 `-2 × grad_log_pi`，logits 沿相反方向移动 → 坏动作概率下降。✓
+- `td_error = 0`：不更新，说明这步正好符合预期，不需要调整。✓
+
+---
+
+### 问题五：td_error 收敛到 0 后 Actor 就没有梯度了？
+
+对，这正是设计意图——也是它的根本问题。
+
+理想情况：Critic 完全准确（`td_error = 0`），说明每步结果都和预期一致，策略已经最优，Actor 梯度消失是"学好了"的信号。
+
+现实问题：Critic 和 Actor 同时在学。Critic 还没收敛时，`td_error` 是噪声估计，Actor 拿着噪声梯度更新，策略变了，又影响 Critic 见到的数据分布，Critic 就更难收敛——这就是"两个网络互相依赖，不一定收敛"的根源。
+
+PPO 的关键改进就是固定旧策略采样、只更新新策略，打破这个循环依赖，让 Critic 能在相对稳定的数据上收敛一段时间，再更新 Actor。
+
+---
+
+### Critic 推导（公式版）
+
+损失 = td_error 的平方：`loss = 0.5 * td_error²`
+
+对 `critic_V[si]` 求导，因为 `td_error = reward + γ*V(next) - V(si)`，`V(si)` 前面有个负号，所以导数是 `-td_error`。
+
+梯度下降 = 减去导数：`V(si) -= α * (-td_error)` = `V(si) += α * td_error`
+
+---
+
+### Actor 推导（公式版）
+
+目标：最大化 `td_error × log π(a|s)`（好动作的对数概率应该高）。
+
+PyTorch 只能最小化，加负号：`loss_actor = -td_error × log π(a|s)`
+
+`log π(a|s)` 对 logits 的导数是 `one_hot(a) - probs`（softmax log 的导数，推导见 [Softmax 与交叉熵](./softmax-and-cross-entropy.md)）。
+
+梯度上升（加上导数）：`logits += α × td_error × (one_hot(a) - probs)`
+
+---
+
+### PyTorch 等价写法
+
+```python
+# Critic：最小化 td_error 的平方
+loss_critic = 0.5 * td_error.detach() ** 2
+optimizer_critic.zero_grad()
+loss_critic.backward()
+optimizer_critic.step()
+
+# Actor：最大化 td_error × log_prob（加负号变最小化）
+loss_actor = -td_error.detach() * log_prob
+optimizer_actor.zero_grad()
+loss_actor.backward()
+optimizer_actor.step()
+```
+
+两种写法数学完全等价。PyTorch 版的好处：网络可以是任意深度，框架自动反向传播，不需要手推导数。手写版只适合线性/浅层模型，但逻辑完全透明。
+
+**loss 是想让它变 0 吗？** Critic 的是——`td_error = 0` 时预测完全准确。Actor 的不是——它是方向性 loss，没有真正的归零点，只要还在学就一直在推。
+
+---
+
 ## 和 wiki 内其他概念的关联
 
+- [Bellman 方程](./bellman-equation.md)：V 值的递推关系，策略迭代为什么收敛，TD 误差的来源
 - [REINFORCE](./reinforce.md)：策略梯度公式的详细推导和与监督学习的区别
 - [PPO 逐行讲解](./ppo-explained.md)：Actor-Critic 加约束的具体实现，含代码
 - [RLHF](./rlhf.md)：RL 应用到语言模型对齐的完整流程（PPO / DPO / GRPO）

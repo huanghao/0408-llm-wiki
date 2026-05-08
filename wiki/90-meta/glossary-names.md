@@ -29,4 +29,6 @@ LLM 论文喜欢用缩写、神话人物、音乐术语、地名当名字，真�
 | **ReStar** | **Re**inforced **S**elf-**T**r**a**ining with **R**easoning | 对 STaR 的强化学习扩展，Re- 前缀表示"用 RL 重新训练"，也暗示"再次成为明星（ReSTAR）"的双关 |
 | **RLHF** | **R**einforcement **L**earning from **H**uman **F**eedback | 描述性缩写，无梗。由 Christiano et al. 2017 提出，InstructGPT/ChatGPT 的对齐核心技术 |
 | **Self-Instruct** | 无缩写，描述性命名 | 字面意思：模型用自己生成的指令来对齐自己（self instruction）。这是该领域命名最透明的论文之一，没有刻意造梗 |
+| **MTR** | **M**otion **TR**ansformer | 描述性缩写，motion prediction + transformer。论文全名"Motion Transformer with Global Intention Localization and Local Movement Refinement"，MTR 是模型简称 |
+| **UniAD** | **Uni**fied **A**utonomous **D**riving | 描述性缩写，"统一的自动驾驶"——把感知、预测、规划统一进一个网络。论文原标题是"Planning-oriented Autonomous Driving"，UniAD 是模型的名称 |
 | **Vicuna** | Vicuña（骆马）| 南美骆驼科，LLaMA 的另一亲戚——LMSYS 用 ShareGPT 对话数据微调 LLaMA，骆驼族谱继续延伸 |
