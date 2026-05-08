@@ -8,6 +8,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Neural Combinatorial Optimization for VRP](00-overview/neural-vrp.md): 用 attention encoder-decoder + REINFORCE 端到端学习 VRP 启发式求解器；AM→POMO→混合 OR 的演化路线及 2026 年前沿
 - [AV Data Pipeline Architecture](00-overview/av-data-pipeline-architecture.md): 自动驾驶数据处理全链路架构概览
 - [自动驾驶模型评测全栈概览](00-overview/av-model-evaluation.md): 感知/预测/规划/端到端各层评测指标、主流 benchmark 及其局限，开环 vs 闭环的根本区别
+- [自动驾驶开放生态](00-overview/av-open-ecosystem.md): 数据集/模型权重/Leaderboard 全景，WOMD/Argoverse/nuScenes/nuPlan 开放程度和许可证，OpenDriveLab 生态
 - [PNC Model Architecture](00-overview/pnc-model-architecture.md): PNC 神经网络模型的架构、规模与训练数据
 - [Tesla Data Engine](00-overview/tesla-data-engine.md): Karpathy 在 Tesla AI Day 演讲中描述的数据飞轮范式
 

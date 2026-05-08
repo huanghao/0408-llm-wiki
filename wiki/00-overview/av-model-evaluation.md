@@ -73,6 +73,46 @@
 
 ## 核心指标详解
 
+### 边际预测 vs 联合预测：两个不同的子任务
+
+在进入指标之前，需要先区分两类预测任务——WOMD 为此设立了两个独立的 Leaderboard。
+
+**边际预测（Marginal Prediction）**：独立预测每个 agent 的未来轨迹，不考虑 agent 之间的联合一致性。minADE/minFDE/MR/mAP 都是边际预测指标，Wayformer 报告的就是这类结果。
+
+**联合预测（Joint / Interactive Prediction）**：评测**成对交互 agent** 的联合轨迹。要求两个 agent 的预测轨迹在物理和逻辑上是一致的——比如 A 车让行时，B 车才会通过，不能两个 agent 各自独立预测出"都继续直行"的冲突结果。
+
+联合预测的额外指标（MotionDiffuser、MTR 等论文报告的主要结果）：
+
+| 指标 | 含义 |
+|------|------|
+| **minSADE**（Scene-level ADE） | K 个 joint 预测里，选整个场景（两 agent）平均位移最小的那组 |
+| **minSFDE**（Scene-level FDE） | K 个 joint 预测里，选整个场景终点误差最小的那组 |
+| **SMissRate** | joint 预测中最好组的场景级 FDE 超阈值的比例 |
+| **Overlap** | 两个 agent 的预测轨迹互相碰撞的比率（物理合理性） |
+
+这些指标为什么之前没提？因为：边际预测是**更广泛使用的基准**（所有模型都报），联合预测是**更高难度的子任务**（只有专门做 joint prediction 的工作报）。Wayformer 是边际预测专用架构，不参与联合预测排行榜。
+
+---
+
+### 指标演化历史
+
+了解指标来历有助于判断哪些指标仍是主流、哪些已经过时。
+
+| 指标 | 起源时间 | 来源/场合 | 当前状态 |
+|------|---------|----------|---------|
+| **ADE/FDE（单条）** | ~2016 | Social Force、Social LSTM 等早期行人预测论文 | 已过时——多模态时代的基础，现在很少单独报告 |
+| **minADE/minFDE（K=5/10）** | 2018-2019 | DESIRE、MTP、Trajectron 等 | 仍是主流，K=6 是 WOMD/Argoverse 标准 |
+| **MR（Miss Rate）** | 2020 | WOMD 论文（Ettinger et al.）随数据集发布 | 主流，WOMD 排行榜固定指标 |
+| **mAP（轨迹级）** | 2021 | WOMD 官方竞赛引入 | WOMD 主排行榜指标，仍是主流 |
+| **Brier-minFDE** | 2021 | Argoverse 2 论文（Wilson et al.）随数据集发布 | Argoverse 2 主指标，仍是主流 |
+| **minSADE/minSFDE** | 2021 | WOMD Interactive Split 随数据集发布 | 联合预测主流指标 |
+| **Overlap** | 2021 | WOMD Interactive Split | 联合预测辅助指标 |
+| **PDM-Score** | 2024 | NAVSIM 论文 | 端到端评测新兴指标，快速成为主流 |
+
+**ADE/FDE 为什么被取代**：2018 年之前行人预测论文普遍用单条 ADE/FDE，因为当时模型只输出一条轨迹。2019 年开始多模态输出成为标配，单条指标无法衡量覆盖能力，min-over-K 成为标准。如今看到论文只报 ADE/FDE（不带 min-over-K），通常是较老的工作或消融实验的简化版本。
+
+---
+
 ### ADE / FDE：最基础的距离误差
 
 **ADE（Average Displacement Error）**：预测轨迹和真实轨迹，在每个时间步上的欧氏距离取平均。
@@ -215,25 +255,125 @@ Wayformer Early Fusion Overlap: 0.127
 
 ---
 
-## 开环 vs 闭环：工业界的实际做法
+## 四层评测：叫法、定义和各层指标
 
-**开环的定位**：快速迭代的代理指标。一次模型改动几小时内就能出 minADE/minFDE，足以过滤明显退步的版本。但开环指标和真实驾驶质量的相关性弱（UniAD 等工作都观察到两者可以不相关）。
+### 叫法的统一
 
-**为什么仍然使用开环**：工程上的不可替代性——闭环仿真（nuPlan、CARLA）需要数小时到数天，路测代价更高。开环指标作为"门槛"而非"终点"。
+"开环/闭环"和"仿真/实车"是两个独立维度，常被混用。业界标准叫法：
 
-**闭环评测的分层**：
+| 层 | 标准叫法 | 因果维度 | 环境维度 | 定义 |
+|---|--------|---------|---------|------|
+| **1** | 离线开环（Offline Open-loop） | 开环 | 离线数据 | 回放历史数据，模型输出不影响场景 |
+| **2** | 仿真闭环（Simulation Closed-loop） | 闭环 | 虚拟仿真 | 模型真正驱动 ego，其他 agent 做出反应 |
+| **3** | 影子模式（Shadow Mode / Online Open-loop） | 开环 | 真实路 | 实车跑真实路，AD 不接管，只记录输出和对比 |
+| **4** | 实车路测（Real-world Closed-loop） | 闭环 | 真实路 | AD 真正接管，ego 行为影响周围 agent |
+
+**开环/闭环的核心区别**是"模型输出是否影响后续场景"，**不是**"训练中 vs 训练后"。开环和闭环都是评测，不是训练过程——区别在于数据是历史录制还是模型实际执行。
+
+**影子模式是开环**：实车跑真实路，但 AD 不接管车辆，其他 agent 的行为不受影响。ego 的行为由人类驾驶员决定，AD 系统只在后台计算"如果我来驾驶会输出什么"，然后和人类驾驶员的实际行为对比。
+
+---
+
+### 第一层：离线开环指标
+
+已在上文详细介绍。核心指标汇总：
+
+| 指标 | 适用任务 | 主要使用场景 |
+|------|---------|------------|
+| minADE_K | 边际预测 | WOMD/Argoverse，最通用 |
+| minFDE_K | 边际预测 | WOMD/Argoverse，主要排行榜 |
+| MR | 边际预测 | WOMD/Argoverse corner case |
+| mAP（WOMD 定义） | 边际预测 | WOMD 官方主指标 |
+| Brier-minFDE | 边际预测 | Argoverse 2 官方主指标 |
+| Overlap | 边际预测 | WOMD，物理合理性 |
+| minSADE/minSFDE | 联合预测 | WOMD Interactive Split |
+| SMissRate | 联合预测 | WOMD Interactive Split |
+| EPA（Expected Prediction Accuracy） | 边际预测 | WOMD 复合指标，部分论文报告 |
+| L2 位移误差 | 规划 | nuScenes planning，ego 轨迹质量 |
+| Collision Rate（离线） | 规划 | nuScenes planning，用真实 agent 位置计算 |
+| OffRoadRate | 规划 | 轨迹离开可行驶区域的比例 |
+
+**遗漏说明**：离线开环层还有 OffRoadRate（轨迹越界）、EPA（WOMD 复合指标）等，本文档主要覆盖排行榜主流指标，不追求穷举。
+
+---
+
+### 第二层：仿真闭环指标
+
+模型在仿真器（nuPlan、CARLA、MetaDrive）里真正驱动 ego，其他 agent 响应 ego 的行为。
+
+**核心指标**：
+
+| 指标 | 含义 | 越高/低越好 |
+|------|------|-----------|
+| **路线完成率（Route Completion）** | 完成预定路线的百分比，防止"站着不动"策略 | ↑ 越高越好 |
+| **碰撞率（Collision Rate）** | 和其他 agent、静态障碍物发生碰撞的次数/比例 | ↓ 越低越好 |
+| **交规违反率（Traffic Infraction）** | 闯红灯、压实线、超速等 | ↓ 越低越好 |
+| **舒适度（Comfort）** | 加速度、角速度、加加速度（jerk）超标次数 | ↓ 越低越好 |
+| **nuPlan 综合分** | 以上各项加权，分 Reactive/Non-reactive 两种仿真 | ↑ 越高越好 |
+| **PDM-Score（NAVSIM）** | 无碰撞×可行驶区域×行驶方向×舒适度×进度的几何平均 | ↑ 越高越好 |
+
+**碰撞率 ≠ 安全**：一个永远刹车不动的模型碰撞率为 0 但路线完成率也为 0。必须同时看碰撞率和路线完成率，两者共同约束才有意义。
+
+**nuPlan 的两种仿真模式**：
+- **Non-reactive**：其他 agent 按历史数据回放，不响应 ego（类似 NAVSIM 的思路）
+- **Reactive**：其他 agent 用 IDM 等规则响应 ego 的行为，但规则仿真和真实驾驶员行为有差距
+
+---
+
+### 第三层：影子模式指标
+
+实车跑真实路，AD 系统不接管，在后台计算"如果我接管了会怎样"。核心是对比 AD 系统的输出轨迹和人类驾驶员的实际轨迹。
+
+**核心指标**：
+
+| 指标 | 含义 |
+|------|------|
+| **轨迹差异（Shadow Trajectory Divergence）** | AD 输出轨迹和人类实际轨迹的差距（L2 或方向差异） |
+| **安全事件触发率** | AD 系统判断"如果我在控制，这里会需要紧急干预"的比率 |
+| **舒适度达标率** | AD 输出轨迹的加速度、jerk 是否在可接受范围内 |
+| **规则符合率** | AD 输出是否会产生交规违反 |
+
+**影子模式的价值**：比仿真更真实（真实交通），比路测更安全（不接管不影响行车安全），是"用真实场景验证 AD 能力"的低成本方式。Tesla 的数据飞轮大量依赖影子模式来发现 hard case。
+
+**局限**：影子模式只能评测"和人类的差距"，不能评测"在极端场景下是否安全"——因为 ego 不接管，极端场景里人类驾驶员已经做了处理，AD 的输出只是"假设性的"。
+
+---
+
+### 第四层：实车路测指标
+
+AD 真正接管，是唯一能评测真实因果效果的层次。
+
+**核心指标**：
+
+| 指标 | 含义 | 行业参考值 |
+|------|------|----------|
+| **接管/干预次数（Interventions）** | 安全员需要人工干预的次数 | Waymo 2023: ~0.05 次/万英里（无人驾驶区域）|
+| **DMPH（Disengagements per Million Hours）** | 每百万小时的接管次数，标准化指标 | 各公司数据不可比，口径不一 |
+| **Miles per Intervention** | 每次接管之间的平均里程，直接反映自动化能力 | 越高越好 |
+| **Critical Event Rate** | 紧急制动、危险接近等严重事件的比率 | 越低越好 |
+| **碰撞率（实车）** | 实际发生碰撞的次数/万英里 | 人类驾驶约 1-2 次/百万英里 |
+
+**为什么各公司数据不可比**：接管的定义不同（"驾驶员主动接管" vs "系统触发降级"），路测区域不同（高速公路 vs 城市复杂路况），气候条件不同。Waymo 在凤凰城的表现不能直接和百度在北京的比较。
+
+---
+
+### 四层评测的工程管线
 
 ```
-开环（minADE/minFDE）← 每次迭代必跑，小时级
-      ↓ 通过才进入
-仿真闭环（nuPlan / NAVSIM）← 重要版本跑，天级
-      ↓ 通过才进入
-影子模式（实车不介入，在线评测）← 上线前，周级
-      ↓ 通过才进入
-实车路测（小范围受控）← 产品发布前
+离线开环（minADE/minFDE）
+  ← 每次训练后自动跑，小时级，过滤明显退步的版本
+
+仿真闭环（nuPlan/NAVSIM/内部仿真器）
+  ← 重要版本跑，天级，验证规划安全性
+
+影子模式（实车但不接管）
+  ← 上线前，周-月级，用真实交通验证
+
+实车路测（AD 接管）
+  ← 产品发布前，持续收集，最终裁判
 ```
 
-PNC 模型目前主要依赖开环（ADE/FDE on val set）+ 规则层仿真，闭环评测的投入程度取决于场景优先级。
+PNC 模型目前主要依赖离线开环（ADE/FDE on val set）+ 规则层仿真。仿真闭环和影子模式的投入程度取决于场景优先级和工程资源。
 
 ---
 
@@ -277,8 +417,10 @@ minADE/minFDE 低，不代表规划好。这是这类模型最核心的评测困
 
 ## 和 wiki 内其他概念的关联
 
+- [自动驾驶开放生态](./av-open-ecosystem.md)：数据集、模型权重、Leaderboard 的统一全景，包括各数据集的许可证和下载方式
 - [Wayformer](../30-papers/wayformer-2207.05844.md)：本文重点模型，WOMD/Argoverse 双榜 SOTA，指标数据来源
-- [WOMD](../30-papers/waymo-open-motion-dataset.md)：主要 benchmark 数据集，minADE/minFDE/MR/mAP 指标定义来源
+- [WOMD](../30-papers/waymo-open-motion-dataset.md)：主要 benchmark 数据集，minADE/minFDE/MR/mAP/Interactive Split 指标来源
+- [Argoverse Motion Forecasting](../30-papers/argoverse-motion-forecasting.md)：Brier-minFDE 指标来源，与 WOMD 互补
 - [NAVSIM](../30-papers/navsim-2406.15349.md)：开环和闭环之间的中间方案，PDM-Score
 - [nuPlan](../30-papers/nuplan-2106.11810.md)：规划层闭环评测的主流 benchmark
 - [PNC 模型架构](./pnc-model-architecture.md)：本文描述的被评测模型的内部架构参考
