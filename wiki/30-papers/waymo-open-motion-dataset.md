@@ -97,6 +97,43 @@ Interactive Split 额外指标（用于联合预测）：**minSADE**（场景级
 
 ---
 
+## 近年值得关注的模型（按发表时间）
+
+> 以下数字来自各论文报告的 WOMD 测试集或验证集结果，**不是实时 Leaderboard 快照**——Leaderboard 排名随时间变化，这里列的是在各自发表时达到 SOTA 或有重要方法贡献的代表性工作。
+
+### 边际预测（Motion Prediction）
+
+| 模型 | 机构 | 年份/会议 | 核心方法 | mAP ↑ |
+|---|---|---|---|---|
+| **Wayformer** | Waymo | 2022 / ICRA 2023 | 同质化 Transformer，Early Fusion 最优；系统对比三种融合策略 | ~0.38 |
+| **MTR** | MPI | 2022 / NeurIPS 2022 | Motion Query Pair：静态意图锚点 + 动态搜索查询，迭代精化；WOMD 边际+联合双榜第一 | ~0.45 |
+| **MTR++** | MPI | 2023 | MTR 升级版，多 agent 联合建模增强 | 提升约 3–5% |
+
+### 联合/交互预测（Interactive / Interaction Prediction）
+
+| 模型 | 机构 | 年份/会议 | 核心方法 | minSADE ↓ | mAP ↑ |
+|---|---|---|---|---|---|
+| **SceneTransformer** | Waymo | 2021 / ICLR 2022 | 统一 Transformer 对 agent/time/road 同时建模；最早系统做联合预测 | ~1.12 | ~0.09 |
+| **JFP** | Waymo | 2022 / CoRL 2022 | 交互图 + 因子化联合分布；mAP 指标上长期领先 | ~0.88 | **0.21** |
+| **MotionDiffuser** | Waymo | 2023 / CVPR 2023 Highlight | 扩散模型建模联合分布，推理时任意可微约束采样 | **0.86** | 0.20 |
+| **MTR（Interactive）** | MPI | 2022 / NeurIPS 2022 | 同上，同时覆盖边际和联合预测 leaderboard | 0.61（val）| — |
+
+### 仿真 Agent（Sim Agents，2023 年新增赛道）
+
+该赛道不评测预测精度，而是评测生成轨迹作为仿真 agent 的**真实性**（用 Waymo 定义的 Simulated Agent Quality metrics），与预测 leaderboard 用不同指标体系，代表性工作：
+
+- **MVTA / CTG++**（2023–2024）：扩散/生成模型路线，在 Sim Agents 赛道上表现较好
+- **MotionDiffuser** 的约束采样框架也被视为 Sim Agents 方向的基础工具
+
+### 总体规律
+
+- **2021–2022**：Transformer 范式确立（SceneTransformer → Wayformer → MTR），mAP 从 ~0.09 升至 ~0.45
+- **2023**：扩散模型进入（MotionDiffuser），带来多模态分布建模和可控采样能力，minSADE 进一步压缩
+- **2024–2025**：E2E/端到端方向兴起，Interaction Prediction 赛道延续 Transformer+扩散混合路线，Sim Agents 赛道成为新热点
+- **2026**：不举办年度竞赛，但学术提交持续进行
+
+---
+
 ## 为什么在 AV 领域影响力大
 
 **规模**：103K 场景远超早期数据集（nuScenes 1K、Argoverse 1 约 33K），提供了训练数据量上的质的飞跃。

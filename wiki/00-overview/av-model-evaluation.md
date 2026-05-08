@@ -4,6 +4,43 @@
 
 ---
 
+## 坐标系视角：Ego-centric vs Scene-centric vs Agent-centric
+
+运动预测模型需要决定"从谁的视角来描述场景"，这个选择影响架构设计、计算效率和多 agent 建模能力。
+
+**Ego-centric（自车中心）**：所有输入都转换到**自车（autonomous vehicle）的坐标系**下描述。"前方 10 米"指的是相对自车前方 10 米。
+
+- 典型用途：规划模块（自车视角天然合理）
+- 优点：坐标系语义清晰，感知数据天然是自车坐标系输出
+- 缺点：自车移动时整个场景坐标都要跟着变换，多帧之间不一致
+
+**Agent-centric（预测目标中心）**：以**被预测的 agent** 为坐标原点描述场景。Wayformer 用的就是这种——预测 agent-1 时，整个场景转换到 agent-1 的坐标系；预测 agent-2 时，再转换到 agent-2 的坐标系。
+
+- 典型用途：运动预测模型（Wayformer、MTR）
+- 优点：对每个 agent 的预测任务是对称的，模型不需要知道"自车在哪"
+- 缺点：**N 个 agent = N 次前向传播**，场景里的公共信息（道路、交通灯）被重复编码 N 次。agent-1 和 agent-2 互相是邻居时，interaction 数据有冗余
+
+**Scene-centric（场景中心）**：用**统一的世界坐标系**描述整个场景，所有 agent 的轨迹都在同一坐标系下。
+
+- 典型用途：UniAD、MotionDiffuser 等联合预测模型
+- 优点：**一次前向传播预测所有 agent**，公共特征（道路、场景结构）只编码一次，可以建模多 agent 间的联合分布（A 刹车导致 B 也刹车）
+- 缺点：模型需要处理变化的 agent 数量和位置，不能简单用固定形状的 tensor；世界坐标系的旋转不变性需要额外处理
+
+**Map-centric（地图中心）**：以地图元素（车道段、路口）为中心组织特征，适合重地图推理的模型。不常见，通常作为 scene-centric 的一个子类。
+
+| | Ego-centric | Agent-centric | Scene-centric |
+|---|---|---|---|
+| 坐标原点 | 自车 | 被预测的 agent | 世界坐标系 |
+| 典型模型 | PNC 规划 Decoder | Wayformer、MTR | UniAD、MotionDiffuser |
+| 前向传播次数 | 1 次 | N 次（N=agent 数） | 1 次 |
+| 多 agent 交互 | 不适用（单 ego） | 弱（独立预测） | 强（联合建模） |
+| 计算效率 | 高 | 低（重复编码） | 高 |
+| 坐标系不变性 | 需处理 | 自然对齐 | 需处理 |
+
+**Wayformer → UniAD 的演进**就体现了 agent-centric 到 scene-centric 的转变：Wayformer 独立预测每个 agent 效率低，UniAD 用 scene-centric 的 MotionFormer 一次处理所有 agent，同时建模多 agent 交互。
+
+---
+
 ## 这类模型做什么
 
 以 PNC SharedEncoder + 各 Decoder 的架构为例，模型做两件事：
