@@ -44,6 +44,127 @@ Road Graph:         [8, 1,  128, 13] → 8 个 agent × 128 条道路段 × 13 �
 Traffic Light:      [8, 10, 16, 10]  → 8 个 agent × 10 帧 × 16 个信号灯 × 10 维
 ```
 
+### 完整模型 QKV 伪代码（Early Fusion）
+
+先给一个从输入到输出的完整流程，说明 Q/K/V 在每个环节的来源：
+
+```python
+# ── 输入维度 ──────────────────────────────────────────────────────────
+# A=8 个 agent，T=10 帧历史，D=256 隐层维度
+# 四种模态原始 shape：
+#   history:      [A, T, 1, D_h=12]
+#   interactions: [A, T, S_i=8, D_i=12]
+#   roadgraph:    [A, 1, S_r=128, D_r=13]
+#   tls:          [A, T, S_tls=16, D_tls=10]
+
+# ── Step 1：投影到公共维度 D，展平为 token 序列 ────────────────────────
+history_tokens    = Linear(D_h, D)(history)         # [A, T,       D]
+interact_tokens   = Linear(D_i, D)(interactions)    # [A, T*S_i,   D]  展平时序和邻居维度
+roadgraph_tokens  = Linear(D_r, D)(roadgraph)       # [A, S_r,     D]
+tls_tokens        = Linear(D_tls, D)(tls)           # [A, T*S_tls, D]
+
+# 加 positional embedding（可学习，0 初始化）
+history_tokens   += PE_time[0:T]                    # 时序 token 加时间 PE
+# road graph 不加 PE（静态，顺序不重要）
+
+# ── Step 2：Early Fusion Scene Encoder（N 层 Transformer Self-Attention）─
+# 把所有 token 拼成一个序列
+tokens = concat([history_tokens, interact_tokens, roadgraph_tokens, tls_tokens])
+# tokens: [A, L=378, D]
+
+for layer in encoder_layers:   # N 层，论文中 N=4 或 6
+    # Self-Attention：Q/K/V 全来自同一序列
+    # 每个 token 都可以 attend 到所有其他 token（跨模态）
+    Q = W_Q(tokens)   # [A, L, D]   ← 每个 token 作为 query，"我想关注什么"
+    K = W_K(tokens)   # [A, L, D]   ← 每个 token 作为 key，"我能提供什么信息"
+    V = W_V(tokens)   # [A, L, D]   ← 每个 token 作为 value，"我实际携带的信息"
+    
+    # Attention 权重：[A, L, L]，表示每对 token 之间的关联强度
+    attn = softmax(Q @ K.T / sqrt(D))
+    tokens = attn @ V + tokens   # 残差连接
+    tokens = FFN(tokens) + tokens
+
+scene_enc = tokens   # [A, L, D]，融合了所有模态信息的 token 序列
+
+# ── Step 3：Trajectory Decoder（N_dec 层 Transformer Cross-Attention）──
+# K 个可学习的 seed 向量，每个代表一种意图
+seeds = nn.Parameter(randn(K, D))   # [K, D]，e.g. K=64
+
+# A 和 batch 的区别：
+#   B（batch）：训练时一次处理多个不同场景，e.g. B=16 个场景
+#   A（agents）：同一场景内同时处理多个 agent，e.g. A=8 个被预测对象
+#   完整 shape: [B, A, L, D]，代码里通常把 B*A 合并处理
+#
+# seeds 是模型参数（[K, D]），对所有场景/agent 共享
+# 每个 agent 使用同一组 K 个 seeds，但 cross-attention 时各自 attend 不同的 scene_enc
+# 所以同一个 seed 对 agent-1 和 agent-2 会产生不同的输出轨迹
+#
+# expand 的含义（见文末附录）：
+#   seeds: [K, D]  → seeds.expand(A, K, D) → [A, K, D]
+#   就是把 [K, D] 这个 tensor "复制" A 份，但不占额外内存（共享同一块内存）
+#   相当于：torch.stack([seeds] * A, dim=0)，但更高效
+queries = seeds.expand(A, K, D)     # [A, K, D]
+
+# 直觉：K 个 seeds 是 K 个"意图专家"，每个 agent 都用这 K 个专家来生成 K 条候选轨迹
+# 最终输出 [A, K, T_future, 4]：A 个 agent × K 条轨迹 × T 步 × 4 个高斯参数
+# 每个 agent 独立得到 K 条候选，专家的"能力"（seeds 参数）是共享的，但输出因场景不同而不同
+
+for layer in decoder_layers:
+    # Self-Attention in Decoder（masked self-attention）
+    # 作用：让 K 个 query 彼此感知，避免多个 seed 都去预测同一种意图
+    # 是否必须？不是强制的——有些架构直接跳过这步，把 seeds 直接送 cross-attention
+    # Wayformer 保留它，因为实验显示有轻微改善；原始 DETR 也有这一步
+    Q = W_Q_self(queries)   # [A, K, D]
+    K_ = W_K_self(queries)  # [A, K, D]  ← QKV 都来自同一个 queries，self-attention
+    V_ = W_V_self(queries)  # [A, K, D]
+    queries = softmax(Q @ K_.T / sqrt(D)) @ V_ + queries
+
+    # Cross-Attention：query 来自 seeds，key/value 来自 scene_enc
+    # 每个 seed 向场景特征"询问"：在这个场景里，我这种意图对应的轨迹是什么？
+    Q = W_Q_cross(queries)   # [A, K, D]   ← seed（意图 query）
+    K_ = W_K_cross(scene_enc)  # [A, L, D] ← 场景特征（提供信息）
+    V_ = W_V_cross(scene_enc)  # [A, L, D] ← 场景特征（实际内容）
+    
+    # Cross-attention 的维度关系：
+    # Q: [A, K, D]，K_: [A, L, D]，V_: [A, L, D]
+    # Q @ K_.T = [A, K, D] @ [A, D, L] = [A, K, L]  ← 每个 query 对每个 token 的关注度
+    # 注意：Q 的第二维 K（意图数）≠ K_ 的第二维 L（token 数），不需要相等
+    #       Q 和 K 的最后一维 D 必须相等（才能做点积）
+    # softmax 沿 L 维度归一化（每个 query 在所有 L 个 token 上的权重和为 1）
+    attn = softmax(Q @ K_.T / sqrt(D), dim=-1)   # [A, K, L]
+    # attn @ V_: [A, K, L] @ [A, L, D] = [A, K, D]  ← 输出 shape 由 Q 的前缀决定
+    # cross-attention 输出 shape 始终和 Q 相同（[A, K, D]），而不是 K/V 的 shape
+    queries = attn @ V_ + queries         # [A, K, D]
+
+# ── Step 4：输出头 ────────────────────────────────────────────────────
+# 每个 query（意图）独立预测一条轨迹
+# 这里的 D 是 Encoder 隐层维度（256），T_future 和 4 是输出头的固定参数
+# D（256）和 T_future*4（80*4=320）是两个独立的超参数，互不影响
+# T_future=80（WOMD: 8s × 10Hz），4=(μ_x, μ_y, σ_x, σ_y)，都由任务固定
+traj = Linear(D_hidden, T_future*4)(queries)   # [A, K, T_future*4] → reshape → [A, K, T_future, 4]
+prob = Linear(D_hidden, 1)(queries).squeeze(-1) # [A, K]，未归一化 log-prob
+prob = softmax(prob, dim=-1)                    # [A, K]，各条轨迹的概率
+
+# ── label（GT）的 shape 和 loss 计算 ─────────────────────────────────
+# GT 轨迹：[A, T_future, 2]  ← 真实 (x, y) 序列，没有概率/方差
+# 分类 label：one-hot，k*=argmin_k FDE(traj[k], GT)  ← 找 K=64 条（训练时）里最近的
+# 注意：WTA 是在原始 K=64 条里选，而不是 aggregation 后的 6 条；
+#       aggregation 只在评测时做，训练时用全部 K=64 条计算 loss
+# Wayformer 是他车预测模型，不预测主车（ego）轨迹
+# 原因：WOMD 的任务定义就是预测 8 个 interested agent（他车），不包含 ego
+# 规划是另一个任务，需要额外的 cost function、交规约束、安全保障，不能直接套用预测框架
+```
+
+**QKV 角色总结**：
+
+| 位置 | Q 来自 | K 来自 | V 来自 | 作用 |
+|------|--------|--------|--------|------|
+| Encoder Self-Attention | 同一 token 序列 | 同一 token 序列 | 同一 token 序列 | 跨模态信息融合，每个 token 聚合整个场景的信息 |
+| Decoder Self-Attention | K 个 seed | K 个 seed | K 个 seed | 意图间信息共享，让不同 seed 感知彼此 |
+| Decoder Cross-Attention | K 个 seed | 场景编码 | 场景编码 | 每个 seed（意图）从场景特征里提取和自己相关的信息 |
+
+---
+
 ### 如何统一成 Transformer 的输入格式
 
 Transformer 期望的输入格式是 `[batch, seq_len, d_model]`（批次 × 序列长度 × 特征维度）。
@@ -52,7 +173,7 @@ Transformer 期望的输入格式是 `[batch, seq_len, d_model]`（批次 × 序
 
 **第一步：线性投影（Projection Layer）**
 
-每种模态有自己的线性层，把最后一维映射到公共维度 D（论文中 D=64/128/256 可配）：
+每种模态有自己的线性层，把最后一维映射到公共维度 D（论文中 D=64/128/256 可配）。**D 是 Encoder 的隐层维度，和 Decoder 输出头的 `T_future*4` 是完全不同的两个 D**——前者是内部特征维度（可随意配置），后者是输出头的目标维度（由预测任务决定）。论文使用 D=256 的隐层，同时 T_future=80（8 秒×10Hz），输出头是 `Linear(256, 80*4)`：
 
 ```python
 # 以 Agent History 为例
@@ -60,15 +181,23 @@ x_history: [A, T, S_h, D_h]  # S_h=1，去掉这维得 [A, T, D_h]
 projected = Linear(D_h, D)(x_history)  # → [A, T, D]
 ```
 
-**第二步：展平为序列**
+**第二步：展平为序列（token 化）**
 
-把时序和空间维度都展平成一个序列维度：
+Transformer 的输入是 `[batch, seq_len, D]`——一个一维的 token 序列，每个 token 是 D 维向量。问题是：各模态的中间维度有时序（T）、有空间（S_i、S_r）、甚至两者都有（T×S_i）。
+
+**"展平为 token"就是把所有中间维度压扁成一个 seq_len 维度**，A 维度保持不动：
 
 ```python
-# Agent History: [A, T, D] → 每个 agent 得到 T 个 token
-# Road Graph:    [A, S_r, D] → 每个 agent 得到 S_r 个 token
-# Agent Interactions: [A, T×S_i, D] → 每个 agent 得到 T×S_i 个 token
+# 原始 shape:  [A, T,    D]  → 展平后: [A, T,      D]   T 个 token，每个 D 维
+# 原始 shape:  [A, S_r,  D]  → 展平后: [A, S_r,    D]   S_r 个 token
+# 原始 shape:  [A, T, S_i, D]  → reshape → [A, T*S_i, D]   T*S_i 个 token
+
+# 所以 A 和 D 是固定的，中间的 token 数量全部加起来：
+total_tokens = T + S_r + T*S_i + T*S_tls
+# = 10 + 128 + 10*8 + 10*16 = 10 + 128 + 80 + 160 = 378 个 token
 ```
+
+**和 LLM 的对比**：LLM 输入是 `[B, seq, D]`，seq 是 token 数，没有 A 维度。Wayformer 多了一个 A 维度，因为要同时处理 A=8 个 agent，每个 agent 各自有一份 token 序列。等价于 LLM 的 batch 里每个样本是一个 agent 的场景视角，A 维度可以理解为"同时处理 A 个独立的序列"。完整形状是 `[B, A, L, D]`，其中 B 是批次、A 是 agent 数、L 是 token 序列长度。
 
 **第三步：添加 Positional Embedding**
 
@@ -152,6 +281,8 @@ scene_enc = CrossModalEncoder(combined)  # [A, L_total, D]
 trajectories = TrajectoryDecoder(scene_enc)  # [A, K, T_future, 4]
 ```
 
+**Cross-Modal Encoder 本质上仍然是 Self-Attention**：输入是多模态 token 拼接成的序列，Q/K/V 全来自这个序列自身，每个 token 可以 attend 到来自任意模态的 token。"Cross-Modal"强调的是"跨模态之间可以交互"，不是说用了 cross-attention（cross-attention 要求 Q 和 K/V 来自不同源）。
+
 **特点**：Encoder 深度被分配给"模态内编码"和"跨模态融合"两部分。在中等延迟预算（16-32ms）时效果最好——既有一定的模态内特征提取，又有跨模态交互。
 
 ---
@@ -175,7 +306,29 @@ token_with_pos[t] = token[t] + PE[t]
 
 **可学习 PE（0 初始化）**：每个位置有一个可学习的向量，从 0 开始训练。Wayformer 的论文提到这样做让模型自己决定要不要使用位置信息（如果某个模态不需要顺序，PE 就学到接近 0 的值，相当于"关掉"）。
 
-**论文的消融**：论文没有对 PE 做单独的消融（没有"去掉 PE 和加上 PE 的对比实验"），但理论依据是：Road Graph（静态道路段）对顺序不敏感，Agent History（时序轨迹）对顺序敏感——用 0 初始化让模型自适应，而不是手动决定哪些模态需要 PE。
+**哪些模态加 PE，PE 的 shape 是什么？**
+
+四种模态的情况各不同：
+
+| 模态 | token 序列含义 | 加 PE？ | 理由 |
+|------|-------------|---------|------|
+| Agent History | 时序帧（1秒前、0.5秒前、现在…） | **加时间 PE** | 时序有因果关系，顺序重要 |
+| Agent Interactions | 时序×邻居（时间步 t，邻居 j） | **可加时间 PE** | 时序维度有意义，邻居维度无序 |
+| Road Graph | 道路段（按行驶方向排列） | **通常不加或 0 初始化** | 段的排列顺序相对不重要 |
+| Traffic Light | 时序×信号灯（时间步 t，信号灯 j） | **可加时间 PE** | 交通灯状态随时间变化有意义 |
+
+PE 的 shape 是 `[max_T, D]`——有 max_T 个位置，每个位置是一个 D 维向量。
+
+加的操作是**按元素相加**，不改变维度：
+
+```python
+# token: [A, T, D]，PE: [T, D]（广播到 A 维度）
+token_with_pos = token + PE[0:T]   # 仍然是 [A, T, D]
+```
+
+**论文的具体做法**：Wayformer 对所有模态都配备可学习 PE，初始化为 0。0 初始化的作用：模型自己决定要不要用位置信息——Road Graph 的 PE 可能训练后接近 0（"不需要顺序"），History 的 PE 会学到非零值（"顺序很重要"）。
+
+**论文的消融**：没有对 PE 做单独的消融，但理论依据是：用统一的可学习 PE 比手动为每种模态指定是否加 PE 更灵活。
 
 **和 NLP 的区别**：NLP 里"第 5 个词"的位置是绝对有意义的（句子结构依赖词序）；驾驶场景里"第 3 帧历史"和"附近第 4 条车道"的"位置"是完全不同类型的信息，用统一的正弦函数不合适——可学习的 PE 更灵活。
 
@@ -217,16 +370,40 @@ prob_i = Linear(D, 1)(seed_i)             # 这条轨迹的概率（未归一化
 
 **K=6 的含义**：对于评测（WOMD/Argoverse 标准），只取 K=6 条轨迹参与计算。训练时用 K=64 个 Gaussian 分量，通过 trajectory aggregation 压缩到 6 条。
 
-**Trajectory Aggregation 是什么**：K=64 条轨迹里有很多是冗余的——比如 10 条都在预测"直行到 30 米外"，它们终点很接近，拿 6 个名额来重复描述同一件事是浪费。Trajectory Aggregation 是一种聚类+筛选操作：
+**Trajectory Aggregation 是什么**：K=64 条轨迹里有很多是冗余的——比如 10 条都在预测"直行到 30 米外"，终点很接近。Aggregation 是**不可学习的后处理步骤**，只在评测时用，不在训练中使用，不影响任何参数。
 
-```
-1. 把 K=64 条轨迹按终点位置聚类
-2. 对每个聚类，选置信度最高的那条作为代表
-3. 选出的代表轨迹数量超过 6 条时，继续按距离阈值合并
-4. 最终保留 6 条，各自覆盖不同的方向/距离区域
+```python
+def trajectory_aggregation(trajs, probs, K_out=6, dist_threshold=2.5):
+    """
+    trajs:  [K_in=64, T, 2]  ← K 条轨迹，每步 (μ_x, μ_y)
+    probs:  [K_in=64]        ← 每条轨迹的概率
+    return: [K_out=6, T, 2], [K_out=6]
+    """
+    endpoints = trajs[:, -1, :]   # [K_in, 2]，只看终点
+    selected = []
+    remaining = list(range(len(trajs)))
+
+    while len(selected) < K_out and remaining:
+        # 从剩余轨迹里选概率最高的
+        best_idx = max(remaining, key=lambda i: probs[i])
+        selected.append(best_idx)
+        remaining.remove(best_idx)
+
+        # 删掉终点距离 best 太近的（冗余轨迹）
+        best_end = endpoints[best_idx]
+        remaining = [
+            i for i in remaining
+            if np.linalg.norm(endpoints[i] - best_end) > dist_threshold
+        ]
+
+    return trajs[selected], probs[selected]
 ```
 
-效果：6 条轨迹尽量"分散"，每条代表不同的运动模式，而不是多条聚集在同一区域。这样 minFDE 的评测（找 6 条里最近的那条）才有意义——6 条各自覆盖不同区域，总有一条能靠近 GT，而不是 6 条都在同一个方向上堆叠。
+**这部分不是可学习的**：没有参数，不参与梯度计算，只是 NMS（非极大值抑制）在轨迹上的应用。
+
+**dist_threshold 是评测规则里定义的**：WOMD 官方评测工具用 2.5m 作为终点距离阈值（论文 Appendix C）。
+
+**如果选不到 K_out=6 条怎么办**：伪代码里 `while len(selected) < K_out and remaining` 会在 remaining 耗尽时提前结束。实践中 K=64 条轨迹几乎总能选出 6 条，因为只要有 6 条终点相互距离 > 2.5m 就够了——K=64 条分布在各个方向，终点差距通常远大于 2.5m。如果场景极其简单（车只能直行，所有 64 条都在 2.5m 范围内），选出的条数会小于 6，此时评测指标会按实际选出的数量计算，或用重复填充到 6 条（具体处理方式取决于评测脚本）。
 
 **GT（Ground Truth）是什么**：GT 轨迹是数据集里记录的真实车辆在未来时间步的真实位置序列——传感器实际观测到的轨迹，通过后处理标注得到。GT 是"真实发生的那条轨迹"。
 
@@ -247,32 +424,48 @@ Wayformer 的 loss 分两部分，对应 Decoder 的两个输出：
 
 **分类 Loss（选哪条 GMM 分量）**：
 
-K 条轨迹各有一个预测概率 $p_1, \ldots, p_K$（softmax 归一化）。训练时找和 GT 距离最近的那条，记为第 $i^*$ 条，然后最大化它的对数概率：
+$$i^* = \arg\min_{k \in \{1,\ldots,K\}} \text{FDE}(\hat{Y}_k, Y_{\text{GT}})$$
 
-```
-L_cls = -log(p_{i*})
-```
+$$\mathcal{L}_{\text{cls}} = -\log p_{i^*}$$
 
-等价于交叉熵 loss，目标是让模型给"最好的那条"更高的概率。
+- $K$：训练时的轨迹数（Wayformer 用 K=64）
+- $i^*$：K 条轨迹里 FDE 最小的那条的索引（赢家）
+- $p_{i^*}$：赢家那条的预测概率（softmax 归一化后）
+- 等价于 one-hot 标签的交叉熵，目标是让模型给赢家更高概率
+
+**WTA 的选择在 K=64 原始输出里做**，不是 aggregation 后的 6 条。Aggregation 只在评测时做，训练全程用全部 K=64 条。
+
+**Loss 公式里为什么没有 A 和 B（batch）维度？**
+
+这是机器学习里普遍的写法习惯：loss 公式通常写一个样本的情况，实际训练时对 batch 内所有样本取均值。完整的计算是：
+
+$$\mathcal{L}_{\text{total}} = \frac{1}{B \cdot A} \sum_{b=1}^{B} \sum_{a=1}^{A} \mathcal{L}^{(b,a)}$$
+
+其中 $\mathcal{L}^{(b,a)}$ 是第 $b$ 个场景、第 $a$ 个 agent 的 loss。框架（PyTorch）自动对 batch 维度做均值（`loss.mean()`），不需要手动写出来。这和普通 DNN 的情况一样——写交叉熵 $-\log p_y$ 时也没写 batch 维度，但实际是 `loss = cross_entropy(logits, labels).mean()`。
 
 **回归 Loss（最好那条的轨迹质量）**：
 
-对第 $i^*$ 条轨迹，每步输出一个 2D 高斯分布，用 GT 轨迹计算负对数似然：
+对赢家 $i^*$ 那条轨迹的每一步，计算预测高斯分布对 GT 位置的负对数似然：
 
-```
-L_reg = -Σ_t log N(y_t | μ_t, Σ_t)
-      = Σ_t [ (y_t - μ_t)^T Σ_t^{-1} (y_t - μ_t) + log|Σ_t| ]
-```
+$$\mathcal{L}_{\text{reg}} = -\sum_{t=1}^{T} \log \mathcal{N}(y_t \mid \hat{\mu}_t, \hat{\Sigma}_t)$$
 
-其中 $y_t$ 是 GT 在第 $t$ 步的真实位置，$(\mu_t, \Sigma_t)$ 是模型预测的高斯分布参数。不确定性 $\sigma$ 越小，模型越自信，对偏差的惩罚越大。
+展开（假设 x、y 方向独立，$\hat{\Sigma}_t = \text{diag}(\hat{\sigma}_{x,t}^2, \hat{\sigma}_{y,t}^2)$）：
+
+$$= \sum_{t=1}^{T} \left[ \underbrace{\frac{(y_{x,t} - \hat{\mu}_{x,t})^2}{2\hat{\sigma}_{x,t}^2}}_{\text{x方向均值误差}} + \underbrace{\frac{(y_{y,t} - \hat{\mu}_{y,t})^2}{2\hat{\sigma}_{y,t}^2}}_{\text{y方向均值误差}} + \underbrace{\log \hat{\sigma}_{x,t} + \log \hat{\sigma}_{y,t}}_{\text{方差正则（防止 σ 塌缩到 0）}} \right]$$
+
+- $y_t = (y_{x,t}, y_{y,t})$：GT 在第 $t$ 步的真实 (x, y) 位置
+- $\hat{\mu}_t = (\hat{\mu}_{x,t}, \hat{\mu}_{y,t})$：模型预测的均值位置
+- $\hat{\sigma}_{x,t}, \hat{\sigma}_{y,t}$：模型预测的 x/y 方向不确定性（标准差）
+- 前两项：均值越偏离 GT，且 $\sigma$ 越小（越自信），惩罚越重
+- 后两项：防止模型把 $\sigma$ 缩到 0 来规避前两项的惩罚——$\log \sigma \to -\infty$ 时反向惩罚
 
 **总 Loss**：
 
-```
-L = L_cls + λ * L_reg
-```
+$$\mathcal{L} = \mathcal{L}_{\text{cls}} + \lambda \cdot \mathcal{L}_{\text{reg}}$$
 
-**关键机制——Winner-Takes-All（WTA）**：只有"赢家"（最近的那条 $i^*$）参与 loss 计算，其余 K-1 条不被惩罚。这迫使不同 seed 各自专门化：在不同训练样本里，不同 seed 各自成为"赢家"，逐渐分化为不同的运动模式专家。如果对所有 K 条都计算 loss，所有 seed 会退化成预测相同的"平均轨迹"。
+**$\lambda$ 如何设置**：论文中 $\lambda = 1$（等权重）。这是一个需要调的超参数，但论文没有做 $\lambda$ 的消融实验——作者直接用了 1，在 WOMD 上效果好。不同任务/数据集可能需要调整，一般范围是 0.5~2.0。
+
+**关键机制——Winner-Takes-All（WTA）**：只有赢家 $i^*$ 参与两个 loss 的计算，其余 K-1 条不被惩罚。迫使不同 seed 各自专门化；如果所有 K 条都计算 loss，所有 seed 会退化成预测相同的"平均轨迹"。
 
 ---
 
@@ -305,14 +498,246 @@ L = L_cls + λ * L_reg
 ### 关键消融结论
 
 **Early Fusion 效果最好**（尤其在大模型上）：
+**延迟的硬件背景**：论文中的延迟数据在**单块 GPU（推测为 V100/A100）** 上测得，是推理一个 batch 的时间。车载芯片（NVIDIA Orin、高通 SA8540P 等）算力约为高端 GPU 的 1/5～1/20，16ms 在 GPU 上对应车端约 80～320ms——已经超过了 10Hz（100ms/帧）的实时性要求。实际部署时需要配合 TensorRT 量化和 Latent Query 加速把延迟压到 10ms 以下。
+
 - 低延迟（≤16ms）：Late Fusion 最优（计算省）
 - 中延迟（16~32ms）：Hierarchical 有优势
 - 高容量/高延迟（>32ms）：Early Fusion 追上甚至超过 Hierarchical
 - 随模型容量增大，对融合策略的敏感度下降——最简单的方法在足够大的模型上也足够好
 
-**Factorized Attention** 提速 Late Fusion 明显，对 Early/Hierarchical 提速有限。
+**Factorized Attention（分解注意力）**：
 
-**Latent Queries** 对全部融合策略都能 2-16× 提速，几乎无质量损失，是最值得使用的加速手段。
+在前面的伪代码里，interactions 的 T 和 S_i 被展平成了 `T*S_i` 个 token，然后所有 token 一起做 self-attention。这是 **Multi-Axis Attention（全轴注意力）**——最贵的版本，复杂度 $O((T \cdot S_i)^2)$。
+
+Factorized Attention 是一种**不展平**的替代方案：保留时序和空间两个维度，分开做 attention：
+
+```python
+# 假设 interactions 保持 [A, T, S_i, D] 的形状，不展平
+
+# Factorized：先对时序维度做 attention（每个空间位置独立）
+# [A, T, S_i, D] → 沿 T 维做 self-attention → [A, T, S_i, D]
+x = temporal_attention(x)   # O(T²) per spatial position
+
+# 再对空间维度做 attention（每个时间步独立）
+# [A, T, S_i, D] → 沿 S_i 维做 self-attention → [A, T, S_i, D]
+x = spatial_attention(x)    # O(S_i²) per time step
+
+# 总复杂度 O(T²·S_i + T·S_i²)，远小于全轴 O((T·S_i)²)
+```
+
+**沿单轴做 attention 的实现方式**：不是真的用 for 循环，而是用 reshape 把"不参与 attention 的维度"放进 batch 维度：
+
+```python
+x: [A, T, S_i, D]
+
+# 沿 T 轴做 attention（每个空间位置独立，S_i 进 batch）
+x_t = x.reshape(A * S_i, T, D)      # 把 S_i 合并进 batch
+x_t = self_attention(x_t)            # 标准 attention，序列长度 T
+x   = x_t.reshape(A, T, S_i, D)     # 还原
+
+# 沿 S_i 轴做 attention（每个时间步独立，T 进 batch）
+x_s = x.permute(0, 2, 1, 3)         # [A, S_i, T, D]
+x_s = x_s.reshape(A * T, S_i, D)    # 把 T 合并进 batch
+x_s = self_attention(x_s)            # 序列长度 S_i
+x   = x_s.reshape(A, S_i, T, D).permute(0, 2, 1, 3)  # 还原
+```
+
+处理完后，x 仍然是 `[A, T, S_i, D]`——和输入 shape 一样。后续的模态融合（Early Fusion）还是把 T×S_i 展平成 L 个 token 拼接到其他模态上，这一步没有变化。Factorized 只影响 Encoder 内部的 attention 计算方式，不影响 Fusion 的数据组织。
+
+有两种变体：Sequential（先全部时序层再全部空间层）和 Interleaved（时序和空间交替）。
+
+前面伪代码里写的是展平+全轴 attention 的版本（Multi-Axis），这是 Wayformer 消融实验中的基准配置。Factorized 是可选的加速变体，用来在质量允许的范围内减少计算量。
+
+**Factorized Attention 的来源和通用性**：这个思路最早来自图像生成领域（Axial Transformer，Wang et al. 2020），Video Transformer（2021）把它用到视频的时序×空间维度。本质上是一种通用策略——**只要输入有明确的多维结构**（时序×空间、行×列、传感器×时间），都可以用。已被用于视频理解（TimeSformer）、图像生成（Axial Diffusion）、驾驶（Wayformer）等多个领域。
+
+**为什么没有"成为通用方法被所有模型使用"**：它有前提条件——输入必须有清晰的多维结构。LLM 处理的文本 token 序列只有一个维度（位置），没有"时序×空间"这样的结构，Factorized Attention 不适用。对于真正有多维结构的任务（视频/图像/驾驶），它确实已经是主流选择。通用 LLM 更常用的加速是 FlashAttention（无质量损失，详见 [Attention 优化技术](../20-concepts/attention-optimization.md)）。
+
+**Factorized Attention** 提速 Late Fusion 明显，对 Early/Hierarchical 提速有限（cross-modal encoder 里 road graph 被 tile 到时序维度，token 数增多，抵消了加速效果）。
+
+**Latent Queries（潜在查询）**：
+
+也是一种加速变体，可以叠加在任意 Fusion 策略上。伪代码里的 Encoder 是全量 self-attention：`[A, L, D]` 做 $O(L^2)$ 的 attention。Latent Queries 在第一层把 L 个 token 压缩到 $L_{\text{out}} < L$ 个：
+
+```python
+# 标准 Encoder（伪代码里的版本）
+tokens: [A, L=378, D]
+for layer in encoder_layers:
+    tokens = self_attention(tokens)   # O(L²) = O(378²) ≈ 143K 次操作
+
+# Latent Queries 版本
+latent = nn.Parameter(randn(L_out, D))   # e.g. L_out = 0.5 * L = 189，可学习
+latent = latent.expand(A, L_out, D)      # [A, L_out, D]
+
+# 第一层：cross-attention，latent 作为 query，原始 token 作为 K/V
+# 把 L 个 token 的信息压缩进 L_out 个 latent vector
+latent = cross_attention(Q=latent, KV=tokens)   # O(L_out * L)，线性
+
+# 后续层：在短序列上做 self-attention
+for layer in remaining_encoder_layers:
+    latent = self_attention(latent)   # O(L_out²) << O(L²)
+```
+
+不是简单的 `Linear(L, L_out)`——那只是线性变换，没有注意力机制；Latent Queries 用 cross-attention 让每个 latent 向量自己"决定"要从原始 token 里聚合什么信息，更灵活。原理和 Perceiver（Jaegle et al., 2021）相同。
+
+这部分确实没有在前面的伪代码里体现——伪代码写的是基础版本（无加速）。Factorized Attention 和 Latent Queries 是可插拔的加速模块，论文里对它们做了单独的消融实验。对全部 Fusion 策略都能 **2-16× 提速**，几乎无质量损失，是最值得使用的加速手段。
+
+---
+
+## 附录：各模态数据结构详解
+
+以 WOMD 配置（A=8，T=10，D=256）为例，展示每种模态的原始数据结构及其含义：
+
+**Agent History** `[A=8, T=10, 1, D_h=12]`
+
+每个 agent 的历史轨迹，T=10 帧（1 秒，10Hz），D_h=12 个特征：
+
+```
+每帧 12 个特征（以 agent 自身为坐标原点的相对坐标系）：
+  [0]  x           当前位置 x（米）
+  [1]  y           当前位置 y（米）
+  [2]  vx          速度 x 分量（m/s）
+  [3]  vy          速度 y 分量（m/s）
+  [4]  ax          加速度 x（m/s²）
+  [5]  ay          加速度 y（m/s²）
+  [6]  heading     朝向角（弧度）
+  [7]  width       车宽（米）
+  [8]  length      车长（米）
+  [9]  height      车高（米）
+  [10] type_car    是否是机动车（0/1）
+  [11] valid       该帧是否有效（遮挡时为 0）
+```
+
+**Agent Interactions** `[A=8, T=10, S_i=8, D_i=12]`
+
+每个 agent 周围最近的 S_i=8 个邻居的状态，特征和 History 一样，但坐标转换到以该 agent 为中心的相对坐标系（"邻居在我前方 10m，左方 3m"）。
+
+`T×S_i = 80` 个 token，时间步×邻居组合。每个 token 含义：在第 t 帧，第 j 个邻居相对于我的位置/速度/类型。
+
+**Road Graph** `[A=8, 1, S_r=128, D_r=13]`
+
+距离每个 agent 最近的 S_r=128 条道路折线段，时间维度为 1（道路静态）：
+
+```
+每段 13 个特征（绝对世界坐标系）：
+  [0-1]  起点 (x, y)
+  [2-3]  终点 (x, y)
+  [4]    方向角
+  [5]    道路类型（0=直道，1=弯道，2=路口，3=人行横道…）
+  [6]    限速
+  [7]    是否双向
+  [8-9]  到 agent 的相对位置（将绝对坐标转为 agent 中心的相对坐标）
+  [10]   道路段 ID（场景内的整数编号，用于标识唯一的道路段）
+  [11]   是否在路口区域（0/1）
+  [12]   车道宽度（米）
+```
+
+**道路段 ID 的含义和作用**：
+
+- **编号范围**：场景内的局部整数编号（不是全局 HD map 的 UUID），在该场景的 128 条道路段内唯一，通常是 0~127 这样的小整数。WOMD 的数据格式里，每个场景单独编号——不同场景的 segment #5 是完全不同的道路段。
+- **作用**：主要用于 Road Graph 内部，描述道路段之间的连接关系（"segment #3 的终点连接 segment #7 的起点"）。Wayformer 的向量化输入里，这个 ID 是用来区分不同段的标识符，但因为是局部编号，通常作为 index 而不是直接作为浮点特征输入模型。
+
+注：原先写的"Agent Interactions 里记录每个邻居当前所在的 lane ID"是错误的——WOMD 的 Agent Interactions 特征和 Agent History 格式相同（位置/速度/类型等），不包含 lane ID 字段。模型通过 attention 机制隐式地建立 agent 和道路段的关联，不依赖显式的 lane ID 跨模态引用。
+
+**Traffic Light State** `[A=8, T=10, S_tls=16, D_tls=10]`
+
+距离每个 agent 最近的 S_tls=16 个交通灯在 T=10 帧的状态：
+
+```
+每个时间步每个信号灯 10 个特征：
+  [0-1]  停止线位置 (x, y)（绝对坐标）
+  [2]    信号状态（0=未知，1=绿，2=红，3=黄，4=闪烁红，5=箭头绿，6=停止）
+  [3]    置信度（感知系统对该信号灯检测的置信度，0~1）
+  [4-5]  信号灯杆位置 (x, y)
+  [6]    朝向角（信号灯面对哪个方向）
+  [7]    关联的车道 lane ID（哪条车道受这个灯控制）
+  [8]    距离 agent 的距离
+  [9]    是否有效（超出感知范围时为 0）
+```
+
+**为什么不同 agent 的 Road Graph 和 TLS 可能重叠**：8 个 agent 都在同一场景里，如果两个 agent 相邻，它们各自最近的 128 条道路段会有大量重叠（只是以各自为中心的相对坐标不同）。这是 agent-centric 设计的重复编码代价。
+
+---
+
+## 附录：scene_enc 用于相似场景搜索
+
+scene_enc `[A, L, D]` 包含丰富场景信息，可用于场景搜索。
+
+**向量搜索的实际做法**
+
+你说得对：pool 后得到 `[A, D]` 仍然是矩阵，`[A×L×D]` 的扁平化向量也完全可以做相似搜索。实际选择取决于"相似"的含义：
+
+| 方案 | 做法 | 适合搜索什么 |
+|------|------|------------|
+| 展平 `[A*L*D]` | reshape 成一个长向量 | 整个场景全局相似（所有 agent + 所有 token） |
+| pool 到 `[A, D]` 再展平 `[A*D]` | mean-pool + reshape | 场景中所有 agent 综合的相似 |
+| pool 到 `[D]`（选一个 agent） | mean-pool，取第 a 行 | 某个特定 agent 视角的场景相似 |
+
+FAISS 等向量检索库要求每个检索单元是一个 1D 向量（`[d]`），"d 多大"没有限制。把 `[A×L×D]` 展平成长度 `A*L*D` 的向量是合法的，只是向量很长（8×378×256≈775K 维），相似度计算慢，且语义上所有 token 等同对待（没有利用结构）。pool 后再用是在"降维保留关键信息"和"计算效率"之间的权衡，不是必须的。
+
+**[CLS] token 是什么，需要有 label 吗**：[CLS]（Classification token）是 BERT 等模型在序列开头加的特殊 token，训练时有明确任务（如句子分类），所以第 0 个 token 的输出会聚焦在整体语义。Wayformer 没有 [CLS] token，没有专门训练某个 token 来表示"整体场景"，所以直接取第 0 个 token 没有特殊含义。用 mean-pool 或 max-pool 是更合理的选择。
+
+**实际用法**：TrafficGen 用了类似的 encoder 输出做场景 embedding，通过 t-SNE 可视化分析不同数据集之间的 domain gap（详见 ScenarioNet 论文）。
+
+---
+
+## 附录：训练数据规模
+
+| 数据集 | 训练场景数 | 验证场景数 | 总时长 |
+|--------|----------|----------|--------|
+| WOMD（主要） | ~487K | ~44K | 约 27 小时 |
+| Argoverse 1 | ~205K | ~39K | — |
+
+**训练配置**（论文 Section 4.2）：
+
+- 优化器：AdamW，学习率 2e-4，线性衰减到 0，总步数 1M
+- Batch size：每 worker 16，共 16 个 TPU v3 core，等效 global batch = 256
+- 模型大小：hidden dim 64/128/256 和 depth 1/2/4 层的组合（0.3M ~ 20M 参数）
+- 硬件：16 个 TPU v3 core，训练约 1M steps
+
+**训练了几个 epoch？**
+
+WOMD 训练集约 487K 场景，每个场景可以提取约 1 个训练样本（1秒历史 + 8秒预测的窗口）。
+
+```
+1M 步 × 256 batch = 2.56 亿个训练样本
+2.56 亿 ÷ 487K ≈ 525 epoch
+```
+
+**这不是说数据不够，而是说数据在被反复使用**：525 epoch 远超通常认为的"充分训练"标准（NLP 通常 3-10 epoch）。对于小模型（20M 参数）和 487K 场景这个数据量，重复使用是正常的——模型早就"看过"所有数据，后期的梯度更新主要是在精化细节而不是学新知识。
+
+是否过拟合取决于验证集表现，论文没有报告训练/验证 loss 曲线，但最终验证集指标正常，说明没有严重过拟合。
+
+**这只是 WOMD 参赛数据，Waymo 实际用的数据量远大于此**：Waymo 车队累积了数千万英里路测数据，内部训练数据量可能是论文数据集的 100 倍以上。参赛规则要求只能用 WOMD 官方数据，禁止外部数据——所以论文结果是"在规则约束下"的最优，不代表 Waymo 实际系统的数据量。**如果你有自己的数据且不参赛**，掺入私有数据通常会有帮助，尤其是覆盖 WOMD 中少见的场景（某些地理区域、特殊天气、特殊道路结构等）。
+
+**16 个 TPU 的分布式训练**：这是**数据并行**（data parallel）——16 个 TPU core 各自持有一份完整的模型参数，每个 core 处理不同的 mini-batch（每个 worker 16 个样本），计算梯度后通过 AllReduce 操作在所有 core 间**同步梯度并平均**，每个 core 用平均梯度更新自己的模型。数据是切分的（每个 core 看不同的样本），模型参数是共享同步的（最终所有 core 的参数相同）。训练结束时取任意一个 core 的参数即可，它们完全一样。
+
+**训练时间估算**：20M 参数的模型，1M 步，batch 256，在 16 块 TPU v3（每块约 420 TFLOPS）上：估计约 **6-12 小时**（论文未明确说明，TPU v3 训练效率高，这个量级在一天内完成很正常）。
+
+---
+
+## 附录：expand 与 broadcast
+
+**broadcast（广播）**：PyTorch/NumPy 在做逐元素运算时，如果两个 tensor 形状不同但兼容，会自动沿缺失的维度"扩展"，不复制数据。
+
+```python
+# 加法广播示例
+a = torch.ones(3, 4)   # [3, 4]
+b = torch.ones(4)      # [4]
+c = a + b              # [3, 4]，b 被广播到每行
+```
+
+**expand**：显式地把 tensor 扩展到指定形状，但**不分配新内存**（和广播一样，底层是视图/stride trick）。
+
+```python
+seeds = torch.randn(K, D)          # [K, D]，真实数据
+queries = seeds.expand(A, K, D)    # [A, K, D]，没有分配新内存
+# queries[0] 和 queries[1] 指向同一块内存，内容相同
+
+# 区别于 repeat（会真实复制数据）：
+queries_copy = seeds.unsqueeze(0).repeat(A, 1, 1)  # [A, K, D]，分配 A 倍内存
+```
+
+**expand 在 Wayformer 里的语义**：K 个 seeds 代表 K 种"通用意图专家"，对所有 agent 共享。expand 之后每个 agent 都拿到同一组 seeds 作为初始 query，但随后通过 cross-attention 从各自不同的 scene_enc 里提取信息，输出轨迹因此不同。
 
 ---
 

@@ -55,6 +55,12 @@ This is the content-oriented entry point for the LLM wiki.
 **Scaling 基础**
 - [幂律与 Scaling（Power Law）](20-concepts/power-law-and-scaling.md): 幂律是什么、翻倍法则、在 LLM/语言/城市/地震等领域的普遍出现，以及为何指数小意味着收益递减
 
+**图结构学习**
+- [图神经网络（GNN）](20-concepts/gnn.md): 消息传递框架、GCN/GAT/GIN 变体对比、节点/边/图分类任务，附 Karate Club 纯 PyTorch demo（src/gnn_demo.py）
+
+**概率与统计**
+- [概率分布速查](20-concepts/probability-distributions.md): 幂律、指数、泊松、对数正态、GMM、Pareto、Weibull、Beta、Dirichlet、负二项、学生 t——密度函数/均值方差/应用/图形判断/统计检验
+
 **基础概念**
 - [Tokenization](20-concepts/tokenization.md): BPE、WordPiece、SentencePiece
 - [Word Embedding](20-concepts/word-embedding.md): 词向量基础
@@ -64,9 +70,13 @@ This is the content-oriented entry point for the LLM wiki.
 - [Minimax 博弈](20-concepts/minimax.md): 博弈论中对抗框架，GAN / RLHF reward hacking 的理论基础
 - [随机森林（Random Forest）](20-concepts/random-forest.md): 集成学习方法，bagging + 特征随机性的决策树集成
 - [高斯混合模型（GMM）](20-concepts/gaussian-mixture-model.md): K 个高斯加权叠加建模多峰分布，运动预测轨迹输出的主流方式，Winner-Takes-All loss 驱动多模态分化
+- [分布式训练](20-concepts/distributed-training.md): 数据并行 vs 模型并行，AllReduce 梯度同步原理，DistributedDataParallel，数据切分提升 I/O 效率
+- [Attention 优化技术](20-concepts/attention-optimization.md): Factorized/FlashAttention/MQA-GQA/Latent Queries/Linear Attention/RoPE——各类优化手段的原理、适用场景和工业采用现状
+- [Tensor 操作参考](20-concepts/tensor-operations.md): reshape/permute/expand/einsum 详解，内存布局原理，为什么 reshape 和 for 循环等价
 
 ## Papers
 
+- [Perceiver](30-papers/perceiver-2103.03206.md): cross-attention bottleneck 把超高维输入（50k 像素/音频/点云）压入小 latent 数组，无领域专用结构处理任意模态，ImageNet/AudioSet/ModelNet40 全覆盖，ICML 2021
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
 - [Data Mixing Laws](30-papers/data-mixing-laws-2403.16952.md): 用指数函数拟合数据配比与验证损失的定量关系，嵌套 Scaling Laws 预测 1B 模型最优配比，ICLR 2025
 - [Phi-1](30-papers/phi-1-2306.11644.md): 1.3B 参数 + 7B 教科书质量数据，HumanEval 50.6%，超越 10 倍大的模型
@@ -77,6 +87,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Quiet-STaR](30-papers/quiet-star-2403.09629.md): 让模型在每个 token 处静默思考，从普通文本中自发学习推理
 - [nuScenes](30-papers/nuscenes-1903.11027.md): 自动驾驶多传感器数据集，360° 全向感知基准
 - [nuPlan](30-papers/nuplan-2106.11810.md): 闭环 ML-based 自动驾驶规划基准，10,000+ 小时真实驾驶日志
+- [Axial-DeepLab](30-papers/axial-deeplab-2003.07853.md): 2D self-attention 分解为两个 1D axial-attention，position-sensitive 相对位置编码，全景分割 COCO +2.8% PQ，参数量少 3.8×，ECCV 2020
 - [NAVSIM](30-papers/navsim-2406.15349.md): 非反应式仿真评测框架，用真实数据替代仿真器，PDM-Score 综合指标，CVPR 2024 竞赛 143 支队伍，NeurIPS 2024
 - [UniAD](30-papers/uniad-2212.10156.md): 规划导向端到端 AD，五模块 query 接口串联（跟踪/建图/运动预测/占据预测/规划），nuScenes 全面 SOTA，CVPR 2023 Best Paper
 - [MetaDrive](30-papers/metadrive-2109.12674.md): 可组合自动驾驶 RL 模拟平台，BIG 算法程序化生成 + Waymo/Argoverse 真实数据导入，300 FPS 轻量运行，ScenarioNet 直接前身，TPAMI 2022

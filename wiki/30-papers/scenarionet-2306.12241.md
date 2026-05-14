@@ -182,3 +182,212 @@ ScenarioNet 是唯一同时支持以下全部特性的平台：Waymo/L5/nuPlan/n
   - Li et al. 2021, *MetaDrive: Composing Diverse Driving Scenarios for Generalizable Reinforcement Learning*（arXiv:2109.12674）——ScenarioNet 的前身，合成场景版本
   - Feng et al. 2022, *TrafficGen*（arXiv:2210.06609）——ScenarioNet 场景生成实验使用的生成模型
   - Caesar et al. 2021, *nuPlan*（arXiv:2106.11810）——ScenarioNet 最重要的真实数据来源之一，wiki 有对应文档
+
+---
+
+## 附录：统一场景描述数据结构详解
+
+每个场景文件是一个 `.pkl`（Python pickle）序列化的嵌套字典。以下是完整字段说明和典型取值。
+
+---
+
+### 顶层结构
+
+```python
+scenario = {
+    "map_features":    {...},   # 静态地图元素
+    "objects":         {...},   # 动态交通参与者
+    "traffic_light":   {...},   # 信号灯状态
+    "metadata":        {...},   # 场景元信息
+}
+```
+
+---
+
+### map_features
+
+地图元素以 ID 为键的字典，每个元素是一条折线（polyline）：
+
+```python
+scenario["map_features"] = {
+    "lane_0": {
+        "type": "LANE_SURFACE_STREET",   # 车道类型（枚举）
+        # 可能的值：
+        #   LANE_SURFACE_STREET   普通道路车道
+        #   LANE_BIKE_LANE        自行车道
+        #   LANE_SURFACE_UNSTRUCTURED  非结构化道路
+        #   ROAD_EDGE_BOUNDARY    道路边界
+        #   ROAD_LINE_SOLID_SINGLE_WHITE  实线车道线
+        #   ROAD_LINE_BROKEN_SINGLE_WHITE 虚线车道线
+        #   CROSSWALK             人行横道
+        #   SPEED_BUMP            减速带
+
+        "polyline": np.array([          # shape: [N, 2]，N 个折线顶点的 (x, y) 坐标
+            [12.3, 45.6],               # 世界坐标系，单位：米
+            [13.1, 45.8],
+            [13.9, 46.0],
+            ...
+        ]),
+
+        "speed_limit_mph": 30.0,        # 限速（英里/小时），部分数据集有，无则为 None
+
+        # 仅 LANE 类型有以下连通性字段：
+        "entry_lanes": ["lane_3", "lane_5"],   # 进入此车道的上游车道 ID 列表
+        "exit_lanes":  ["lane_1"],             # 离开此车道的下游车道 ID 列表
+        "left_neighbors":  ["lane_7"],         # 左侧相邻车道 ID
+        "right_neighbors": ["lane_8"],         # 右侧相邻车道 ID
+    },
+    "lane_1": {...},
+    "road_edge_0": {...},
+    ...
+}
+```
+
+**典型规模**（一个 Waymo 场景）：约 50-200 个地图元素，每条折线 5-50 个顶点。
+
+---
+
+### objects
+
+所有动态交通参与者，以 object ID 为键，每个对象存储完整时间序列（object-centric）：
+
+```python
+scenario["objects"] = {
+    "ego":  {                               # "ego" 是自车的固定 ID
+        "type": "VEHICLE",                  # 对象类型：VEHICLE / PEDESTRIAN / CYCLIST / OTHERS
+        "state": {
+            "position": np.array([          # shape: [T, 3]，T 个时间步，每步 (x, y, z)
+                [100.2, 200.5, 0.0],        # z 通常为 0（2D 场景），单位：米
+                [100.8, 200.9, 0.0],
+                ...
+            ]),
+            "heading": np.array([           # shape: [T]，单位：弧度
+                1.57,                       # 朝向角，0 = 东，π/2 = 北（右手坐标系）
+                1.58,
+                ...
+            ]),
+            "velocity": np.array([          # shape: [T, 2]，(vx, vy)，单位：米/秒
+                [2.1, 0.3],
+                [2.2, 0.3],
+                ...
+            ]),
+            "length": np.array([...]),      # shape: [T]，车辆长度，单位：米（通常不变）
+            "width":  np.array([...]),      # shape: [T]，车辆宽度，单位：米
+            "height": np.array([...]),      # shape: [T]，车辆高度，单位：米
+            "valid":  np.array([            # shape: [T]，bool，该帧对象是否存在
+                True, True, True,           # 遮挡/出界时为 False，模拟器据此销毁实体
+                ...
+            ]),
+        }
+    },
+    "obj_0": {
+        "type": "VEHICLE",
+        "state": { ... }                    # 结构同 ego，但 ID 不固定
+    },
+    "obj_1": {
+        "type": "PEDESTRIAN",
+        "state": { ... }
+    },
+    ...
+}
+```
+
+**时间步 T 的说明**：
+- Waymo/WOMD：T=91（9 秒 × 10Hz，前 10 帧为历史，后 80 帧为预测窗口）
+- nuPlan：T=20（20 秒 × 1Hz，或按配置）
+- MetaDrive PG：T 由场景时长决定
+
+**典型规模**（一个 Waymo 场景）：约 30-150 个 object，每个对象 91 帧，"ego" 始终存在。
+
+---
+
+### traffic_light
+
+以信号灯 ID 为键，存储每个时间步的状态：
+
+```python
+scenario["traffic_light"] = {
+    "signal_0": {
+        "state": {
+            "object_state": np.array([      # shape: [T]，每帧的信号灯状态（整数枚举）
+                0,   # LANE_STATE_UNKNOWN
+                1,   # LANE_STATE_ARROW_STOP
+                2,   # LANE_STATE_ARROW_CAUTION
+                3,   # LANE_STATE_ARROW_GO
+                4,   # LANE_STATE_STOP
+                5,   # LANE_STATE_CAUTION
+                6,   # LANE_STATE_GO
+                7,   # LANE_STATE_FLASHING_STOP
+                8,   # LANE_STATE_FLASHING_CAUTION
+            ]),
+        },
+        "lane": "lane_5",                   # 受此信号灯控制的车道 ID
+    },
+    "signal_1": {...},
+    ...
+}
+```
+
+---
+
+### metadata
+
+场景级别的统计信息和来源信息：
+
+```python
+scenario["metadata"] = {
+    "id":          "scenario_0001abc",      # 场景唯一 ID（字符串）
+    "dataset":     "waymo",                 # 来源数据集名称
+                                            # 可能值：waymo / nuscenes / nuplan / lyft / argoverse / pg
+    "coordinate":  "standard",             # 坐标系（standard = 右手系，x 东 y 北）
+    "timestep":    0.1,                    # 时间步长（秒），Waymo=0.1s，nuPlan=1.0s
+    "sdc_id":      "ego",                  # 自车（self-driving car）的 object ID
+    "object_summary": {                    # 各 object 的统计摘要
+        "ego":   {
+            "type":               "VEHICLE",
+            "track_length":       91,           # 该 object 有效帧数
+            "moving_distance":    45.3,          # 总移动距离（米）
+            "valid_length":       89,            # valid=True 的帧数（<track_length 代表有遮挡）
+        },
+        "obj_0": {...},
+        ...
+    },
+    "current_time_index": 10,              # 当前时刻在时间序列中的索引（用于区分历史/未来）
+    "number_summary": {                    # 对象数量统计
+        "num_objects":       45,
+        "num_vehicles":      38,
+        "num_pedestrians":   5,
+        "num_cyclists":      2,
+        "num_others":        0,
+        "num_traffic_lights": 4,
+        "num_map_features":  120,
+    },
+}
+```
+
+---
+
+### 读取示例
+
+```python
+import pickle
+
+# 加载场景
+with open("scenario_0001abc.pkl", "rb") as f:
+    scenario = pickle.load(f)
+
+# 获取自车的位置序列
+ego_positions = scenario["objects"]["ego"]["state"]["position"]  # [T, 3]
+
+# 获取第 10 帧（当前帧）所有有效对象的位置
+t = scenario["metadata"]["current_time_index"]   # = 10
+for obj_id, obj in scenario["objects"].items():
+    if obj["state"]["valid"][t]:
+        pos = obj["state"]["position"][t]         # (x, y, z)
+        print(f"{obj_id}: {pos}")
+
+# 获取所有车道中心线
+for feat_id, feat in scenario["map_features"].items():
+    if feat["type"].startswith("LANE"):
+        polyline = feat["polyline"]   # [N, 2]
+```
