@@ -249,7 +249,20 @@ scenario["map_features"] = {
 
 ### objects
 
-所有动态交通参与者，以 object ID 为键，每个对象存储完整时间序列（object-centric）：
+所有交通参与者（动态和静态），以 object ID 为键，每个对象存储完整时间序列（object-centric）。
+
+**静态障碍物放在哪里**：
+
+| 障碍物类型 | 存储位置 | 说明 |
+|-----------|---------|------|
+| 停驶的车辆（停在路边）| `objects`，type=VEHICLE | `velocity≈0`，`valid` 全程为 True |
+| 行人站立不动 | `objects`，type=PEDESTRIAN | 同上 |
+| 路障、水马、施工锥 | `map_features`，type=SPEED_BUMP 或 ROAD_EDGE_BOUNDARY | 不可移动的静态结构，没有时序变化 |
+| 其他固定障碍物（石墩等）| `objects`，type=OTHERS | Waymo 等数据集会把感知到的固定物体也列为 object |
+
+关键区分：**能被感知跟踪的物体**（有 3D 标注框、有 ID、有位置序列）放进 `objects`；**属于道路结构的静态元素**（车道、路沿、人行道等）放进 `map_features`。施工锥/水马通常有标注框所以进 `objects`，但某些数据集也会把它们的占据区域标注到 `map_features` 里。
+
+**`metadata` 里的 `construction_ratio`**（见论文 Table 2）就是指含施工障碍物（objects 里 type=OTHERS 且速度=0）的场景比例。
 
 ```python
 scenario["objects"] = {
@@ -257,12 +270,18 @@ scenario["objects"] = {
         "type": "VEHICLE",                  # 对象类型：VEHICLE / PEDESTRIAN / CYCLIST / OTHERS
         "state": {
             "position": np.array([          # shape: [T, 3]，T 个时间步，每步 (x, y, z)
-                [100.2, 200.5, 0.0],        # z 通常为 0（2D 场景），单位：米
+                [100.2, 200.5, 0.0],        # 单位：米，z 通常为 0.0（地面平面）
                 [100.8, 200.9, 0.0],
                 ...
             ]),
+            # 坐标系说明：
+            #   - 世界坐标系（World Frame），不随车辆移动
+            #   - x 轴指向东，y 轴指向北，z 轴向上（右手坐标系）
+            #   - 原点由各数据集自定义，Waymo 通常在场景中心附近，
+            #     nuPlan 以城市地图原点为基准（坐标数值可能很大，如 5000m）
+            #   - 不同场景的坐标系原点不同，不能把两个场景的坐标直接混用
             "heading": np.array([           # shape: [T]，单位：弧度
-                1.57,                       # 朝向角，0 = 东，π/2 = 北（右手坐标系）
+                1.57,                       # 朝向角，0 = 东（x 轴正方向），π/2 = 北
                 1.58,
                 ...
             ]),
