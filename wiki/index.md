@@ -81,6 +81,7 @@ This is the content-oriented entry point for the LLM wiki.
 ## Papers
 
 - [Waymo Rider-Only Safety Study（7.1M miles）](30-papers/waymo-safety-rider-only-2312.12675.md): L4 商业部署安全性实证，三层结果指标+漏报调整方法论，police-reported 事故率 -55%、有伤害事故率 -80%，Phoenix/SF 统计显著，Traffic Injury Prevention 2024
+- [ADS 功能不足分类与 Daruma 缓解架构（Fu et al., 2024）](30-papers/ads-fi-characterization-daruma-2404.09557.md): 首篇 ADS FI 系统性实证研究，16 类 OI 分类表（世界模型/交通规则/运动规划/ODD），FI 是系统故障 5 倍，Daruma 跨通道仲裁架构，NXP/TU/e/TNO，arXiv 2024
 - [Perceiver](30-papers/perceiver-2103.03206.md): cross-attention bottleneck 把超高维输入（50k 像素/音频/点云）压入小 latent 数组，无领域专用结构处理任意模态，ImageNet/AudioSet/ModelNet40 全覆盖，ICML 2021
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
 - [Data Mixing Laws](30-papers/data-mixing-laws-2403.16952.md): 用指数函数拟合数据配比与验证损失的定量关系，嵌套 Scaling Laws 预测 1B 模型最优配比，ICLR 2025
