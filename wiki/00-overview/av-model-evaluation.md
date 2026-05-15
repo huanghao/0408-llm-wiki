@@ -108,7 +108,28 @@ minFDE_K = min_{k=1..K} ||ŷ_T^k - y_T||₂
 MR = P(minFDE_K > threshold)
 ```
 
-**mAP（轨迹级）**（2021，WOMD 官方竞赛引入，仍主流）：不是 CV 的 mAP。把每条预测轨迹按置信度排序，按轨迹类型（直行/左转/右转等）分别计算 AP 再取均值。衡量置信度排序质量——能否把高置信度分配给正确的那条。
+**mAP（轨迹级）**（2021，WOMD 官方竞赛引入，仍主流）：不是传统 CV 的 mAP，但思路相同。
+
+**AP（Average Precision）是什么**：AP 是精度-召回率曲线下的面积，用来衡量"排序质量"——模型把真正好的结果排在前面的能力。直觉：如果你有 100 个预测，让你按置信度从高到低排列，AP 衡量的是"置信度高的那些是否确实更准"。
+
+**轨迹级 mAP 的计算**：
+
+1. 把模型输出的所有预测轨迹按**置信度**从高到低排列
+2. 按**轨迹类型**分类（直行/左转/右转/变道/静止/其他，通过终点位置判断）
+3. 对每种类型，遍历排好序的预测列表：
+   - 对每个预测，判断它是否"命中"——终点在 GT 终点的 2m 范围内
+   - 统计当前精度（Precision）= 已命中数 / 已看过的预测数
+   - 统计当前召回率（Recall）= 已命中数 / 总真实轨迹数
+4. 计算 Precision-Recall 曲线下面积，得到该类型的 AP
+5. 各类型 AP 取均值，得到 mAP
+
+**为什么用 mAP 而不是 minFDE**：minFDE 不管置信度，只要有一条近就行——模型可以输出 64 条轨迹把所有方向都撒到，minFDE 会很好看，但置信度完全乱。mAP 要求"高置信度的轨迹必须真的准"，惩罚乱分配置信度的行为。
+
+```
+Wayformer Early Fusion WOMD mAP: 0.412
+```
+
+衡量置信度排序质量——能否把高置信度分配给正确的那条。
 
 **Brier-minFDE**（2021，Argoverse 2 论文引入，仍主流）：把距离和置信度合在一个指标里。
 
@@ -267,7 +288,8 @@ PNC 模型目前主要依赖离线开环（ADE/FDE on val set）+ 规则层仿�
 ## 和 wiki 内其他概念的关联
 
 - [自动驾驶开放生态](./av-open-ecosystem.md)：数据集、模型权重、Leaderboard 全景，许可证和下载方式
-- [Wayformer](../30-papers/wayformer-2207.05844.md)：本文重点模型，WOMD/Argoverse 双榜 SOTA
+- [Wayformer](../30-papers/wayformer-2207.05844.md)：本文重点模型，WOMD/Argoverse 双榜 SOTA，Factorized Attention 和 Latent Queries 加速技术
+- [Attention 优化技术](../20-concepts/attention-optimization.md)：Factorized/Axial Attention 和 Latent Queries 是 Wayformer 等运动预测模型的加速核心
 - [WOMD](../30-papers/waymo-open-motion-dataset.md)：主要 benchmark，minADE/minFDE/MR/mAP/Interactive Split 指标来源
 - [Argoverse Motion Forecasting](../30-papers/argoverse-motion-forecasting.md)：Brier-minFDE 指标来源
 - [NAVSIM](../30-papers/navsim-2406.15349.md)：仿真闭环的轻量替代，PDM-Score

@@ -106,3 +106,27 @@ wiki 里出现的评测集，按能力分类。"污染风险"指数据集测试�
 |---|---|---|---|---|---|---|
 | **Winogender** | — | 职业性别刻板印象（代词共指）| 准确率 | 低 | 高 | PaLM 论文 Section 10 用来评测性别偏见 |
 | **ToxiGen** | — | 模型生成的仇恨言论 | 分类器打分 | — | — | 安全评测，非能力基准 |
+
+---
+
+## 指令遵循 / 对话质量
+
+| 名称 | 全称 | 测什么 | 评测方式 | 难度 | 污染风险 | 备注 |
+|---|---|---|---|---|---|---|
+| **MT-Bench** | Multi-Turn Benchmark | 多轮对话质量（8 类任务：写作/推理/角色扮演等）| GPT-4 打分 1-10 | 中-高 | 低 | Vicuna 首次提出，用 GPT-4 代替人工评分，已成为 chat 模型主流指标 |
+| **Alpaca Eval** | — | 指令遵循质量，与 text-davinci-003 比较 | Win Rate（GPT-4 / GPT-4 Turbo 裁判）| 中 | 中 | 单轮，关注指令完成度，WizardLM/LIMA 等常报 |
+| **LMSYS Chatbot Arena** | — | 盲测人类偏好投票（两个模型盲对比）| ELO 排名 | — | 低（实时更新）| 目前最接近真实用户偏好的排行榜，被广泛引用但不可重现 |
+
+---
+
+## 自动驾驶评测
+
+| 名称 | 数据集 | 测什么 | 主指标 | 备注 |
+|---|---|---|---|---|
+| **WOMD Motion Prediction** | Waymo Open Motion Dataset | 他车运动预测（边际）| mAP | 持续开放，年度竞赛，MTR/Wayformer 等论文主要排行榜 |
+| **WOMD Interaction Prediction** | WOMD Interactive Split | 成对 agent 联合预测 | mAP（joint）| 联合预测子轨道，MotionDiffuser/MTR 报告 |
+| **Argoverse 1 Motion** | Argoverse 1 | 单 agent 运动预测 | minFDE | 已基本停止新提交 |
+| **Argoverse 2 Motion** | Argoverse 2 | 单 agent 运动预测 | Brier-minFDE | 持续开放，同时考核距离和置信度 |
+| **nuScenes Detection** | nuScenes | 3D 目标检测 | NDS（综合分）| BEV 感知方法的标准基准 |
+| **nuPlan Closed-Loop** | nuPlan | 规划（闭环仿真）| 综合分（碰撞/完成率/舒适度）| reactive 仿真，计算代价高 |
+| **NAVSIM** | nuPlan（子集）| 端到端规划（非反应式仿真）| PDM-Score | 轻量，CVPR 2024 竞赛 143 支队伍，快速成为端到端主流评测 |

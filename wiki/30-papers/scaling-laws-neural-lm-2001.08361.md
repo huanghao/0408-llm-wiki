@@ -132,6 +132,7 @@ Chinchilla（2022）后来发现这一建议显著低估了数据的重要性，
 - [Chinchilla Scaling Laws](./chinchilla-2203.15556.md)：直接修正了 Kaplan 的分配建议，将 $N \propto C^{0.73}$ 修正为 $N \propto C^{0.5}$（等比例），原因是 Kaplan 使用固定 LR schedule 导致数据价值被系统低估。
 - [Scaling Data-Constrained LMs](./scaling-data-constrained-lms-2305.16264.md)：在 Kaplan/Chinchilla 框架基础上增加重复数据（多 epoch）场景，扩展了 $D$ 的建模方式。
 - [Data Mixing Laws](./data-mixing-laws-2403.16952.md)：继承 Chinchilla 的参数化公式，进一步扩展到多域数据配比优化。
+- [幂律与 Scaling](../20-concepts/power-law-and-scaling.md)：本文的核心数学工具，幂律 $L \propto N^{-\alpha}$ 的含义、翻倍法则和为什么指数小意味着收益递减。
 - [MFU](../20-concepts/mfu.md)：FLOPs 和计算效率是 Kaplan scaling law 的基础度量，MFU 是实际硬件利用率的衡量指标。
 - [Perplexity](../20-concepts/perplexity.md)：本文以 cross-entropy loss 为核心指标，perplexity 是其指数变换。
 - [Gopher](./gopher-2112.11446.md)：Gopher 训练决策基于 Kaplan rule，被 Chinchilla 证明"过大欠训"，是 Kaplan 错误建议的最典型案例。

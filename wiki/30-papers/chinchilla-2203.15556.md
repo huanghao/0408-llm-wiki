@@ -129,6 +129,7 @@ Chinchilla 参数量是 Gopher 的 1/4，内存占用和推理 FLOPs 也约为 1
 - [Gopher](./gopher-2112.11446.md)：Chinchilla 直接使用 Gopher 的 FLOPs 预算做对比验证，280B Gopher 是 Chinchilla 提出"过大欠训"问题的典型案例。
 - [Llama 3 Herd of Models](./llama-3-herd-of-models.md)：Llama 系列的训练决策（token 数远超 20×N）体现了在推理成本驱动下对 Chinchilla 的主动偏离。
 - [Phi-1](./phi-1-2306.11644.md) / [Phi-2/Phi-3](./phi-2-phi-3.md)：Phi 系列走"高质量教科书数据"路线，对 Chinchilla 的挑战在于：数据质量不均一时，20× 规则可能不成立。
+- [幂律与 Scaling](../20-concepts/power-law-and-scaling.md)：Chinchilla 的核心数学框架——loss 和 N/D 之间的幂律关系，等比例分配规则的推导来源。
 - [MFU](../20-concepts/mfu.md)：MFU 和 FLOPs 是 Chinchilla 分析的基础度量单位。
 - [Perplexity](../20-concepts/perplexity.md)：Chinchilla 用 held-out loss（cross-entropy）作为主要优化目标，perplexity 是其直接变换。
 

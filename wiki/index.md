@@ -10,6 +10,9 @@ This is the content-oriented entry point for the LLM wiki.
 - [自动驾驶模型评测全栈概览](00-overview/av-model-evaluation.md): 感知/预测/规划/端到端各层评测指标、主流 benchmark 及其局限，开环 vs 闭环的根本区别
 - [自动驾驶开放生态](00-overview/av-open-ecosystem.md): 数据集/模型权重/Leaderboard 全景，WOMD/Argoverse/nuScenes/nuPlan 开放程度和许可证，OpenDriveLab 生态
 - [ODD：运行设计域](00-overview/odd-operational-design-domain.md): 地理/环境/交通/速度五维约束体系，SAE J3016/ISO 34503/SOTIF 标准关系，ODD 边界识别挑战，与训练数据和数据飞轮的关系
+- [SAE J3016：驾驶自动化分级标准](00-overview/sae-j3016.md): L0–L5 六级定义，DDT/ODD/OEDR/ADS 术语体系，L2 vs L3 责任边界，L3 工程困境，全球监管采用现状
+- [ISO 34503：ODD 分类标准](00-overview/iso-34503.md): 道路/环境/交通/速度/地理/连接/时间七维属性体系，SAE J3016 的精细化延伸，BSI PAS 1883 的国际化升级，可测量性与语法严谨性
+- [SOTIF：预期功能安全（ISO 21448）](00-overview/sotif-iso-21448.md): 覆盖 ISO 26262 空白——ML 算法设计局限导致的功能不足（FI），四象限场景模型，16 类 OI 分类，触发条件分析，FI 缓解架构 Daruma
 - [PNC Model Architecture](00-overview/pnc-model-architecture.md): PNC 神经网络模型的架构、规模与训练数据
 - [Tesla Data Engine](00-overview/tesla-data-engine.md): Karpathy 在 Tesla AI Day 演讲中描述的数据飞轮范式
 
@@ -77,6 +80,7 @@ This is the content-oriented entry point for the LLM wiki.
 
 ## Papers
 
+- [Waymo Rider-Only Safety Study（7.1M miles）](30-papers/waymo-safety-rider-only-2312.12675.md): L4 商业部署安全性实证，三层结果指标+漏报调整方法论，police-reported 事故率 -55%、有伤害事故率 -80%，Phoenix/SF 统计显著，Traffic Injury Prevention 2024
 - [Perceiver](30-papers/perceiver-2103.03206.md): cross-attention bottleneck 把超高维输入（50k 像素/音频/点云）压入小 latent 数组，无领域专用结构处理任意模态，ImageNet/AudioSet/ModelNet40 全覆盖，ICML 2021
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
 - [Data Mixing Laws](30-papers/data-mixing-laws-2403.16952.md): 用指数函数拟合数据配比与验证损失的定量关系，嵌套 Scaling Laws 预测 1B 模型最优配比，ICLR 2025
@@ -140,4 +144,5 @@ This is the content-oriented entry point for the LLM wiki.
 - [Knowledge Base Conventions](90-meta/conventions.md): page rules and maintenance expectations.
 - [Lint Report 2026-04-28](90-meta/lint-20260428.md): wiki health check findings and action items.
 - [Lint Report 2026-05-03](90-meta/lint-20260503.md): wiki health check findings and action items.
+- [Lint Report 2026-05-15](90-meta/lint-20260515.md): 105 files, 0 orphans, 0 dead links; 2 papers missing 现状与影响, 7 cross-link gaps.
 - [Log](log.md): chronological record of ingests and updates.

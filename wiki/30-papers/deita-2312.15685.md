@@ -179,6 +179,7 @@ Deita 的假设是：好的 instruction tuning 数据应该同时满足三点：
 - [LIMO](./limo-2502.03387.md)：两者都支持少量高质量数据的重要性；Deita 面向通用 alignment，LIMO 面向数学推理。
 - [Human Feedback vs AI Feedback vs Verification](../40-comparisons/human-feedback-vs-ai-feedback-vs-verification.md)：Deita 属于 AI feedback / model-based data selection，而不是 human preference 或外部 verifier 路线。
 - [Synthetic Data with Verification](../20-concepts/synthetic-data-with-verification.md)：Deita 过滤的是 instruction-response 数据质量，verification 路线过滤的是可验证正确性，两者适用场景不同。
+- [Word Embedding](../20-concepts/word-embedding.md)：Deita 的多样性过滤基于 embedding 空间的距离——用 sentence embedding 衡量候选样本与已选集合的最小相似度，选 embedding 距离最远的样本加入。
 
 ## 值得看的部分 / 相关资料
 

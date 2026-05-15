@@ -100,6 +100,17 @@ Wayformer 论文 Table 1 中 Argoverse 排行榜上的"次好方法"是 **DCMS**
 
 ---
 
+## 现状与影响
+
+**一句话定性**：Argoverse 1 已基本退出历史舞台（新提交稀少），Argoverse 2 仍是运动预测的主流 benchmark 之一，Brier-minFDE 指标设计被广泛借鉴，但在规模上被 WOMD（103K 场景）超越，两者互补定位——Argoverse 2 以指标设计和多样性见长，WOMD 以规模和年度竞赛生态见长。
+
+- **Argoverse 1**：已基本停止接受新提交，2022 年后的新工作很少单独汇报 Argoverse 1 结果，已被 Argoverse 2 取代
+- **Argoverse 2 Motion**：持续开放，Brier-minFDE 成为业界运动预测"兼顾距离和置信度"评测方式的参考设计，被 WOMD 的 Waymo Open Dataset Challenge 借鉴
+- **Argo AI 被 Ford 收购（2022）**：数据集维护转入 Ford/Argo AI 余下团队，更新频率降低，但数据仍公开可用
+- **生态地位**：Argoverse 1 是 VectorNet、TNT、MultiPath++ 等奠基性运动预测工作的核心 benchmark；Argoverse 2 是 Wayformer 等 2022-2024 年工作的标准测试集之一
+
+---
+
 ## 和 wiki 内其他概念的关联
 
 - [自动驾驶模型评测全栈概览](../00-overview/av-model-evaluation.md)：运动预测评测层的指标体系，Argoverse 是主要 benchmark 之一

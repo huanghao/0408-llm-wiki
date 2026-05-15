@@ -154,6 +154,17 @@ Interactive Split 额外指标（用于联合预测）：**minSADE**（场景级
 
 ---
 
+## 现状与影响
+
+**一句话定性**：WOMD 是 2021-2026 年运动预测领域规模最大的公开 benchmark，年度竞赛（Waymo Open Dataset Challenge）产出了 MTR、MotionDiffuser 等里程碑工作，mAP 作为主排行榜指标已成为运动预测置信度评估的事实标准，仍是该领域的核心 benchmark。
+
+- **持续活跃**：Leaderboard 持续开放，但 2026 年不举办年度竞赛（训练数据版本稳定，研究重心转向 E2E 和 Sim Agents）
+- **指标标准化**：mAP（按轨迹类型的 AP 均值）和 Interactive Split 的 minSADE/minSFDE 已成为运动预测论文的标配评测指标
+- **竞赛影响**：Waymo Open Dataset Challenge 2022 冠军 MTR 直接推动了 motion query pair 设计成为主流；MotionDiffuser 在 Interactive Split 上展示了扩散模型用于联合预测的可行性
+- **局限**：仅覆盖美国 6 个城市（Waymo 的运营区域），地理多样性有限；无原始传感器数据，不适合端到端感知预测研究
+
+---
+
 ## 和 wiki 内其他概念的关联
 
 - [TrafficGen](./trafficgen-2210.06609.md)：以 WOMD 为训练数据的场景生成模型
