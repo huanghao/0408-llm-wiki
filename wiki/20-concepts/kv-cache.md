@@ -6,6 +6,8 @@
 
 ## 核心问题：自回归生成的重复计算浪费
 
+KV Cache 是**推理阶段**的优化——训练时每个样本都要完整地做前向和反向传播，不存在"缓存上一步结果"的机会。只有推理时的自回归生成才有重复计算的问题。
+
 Transformer 的自回归生成是逐 token 进行的：生成第 $t$ 个 token 时，需要对前 $t-1$ 个 token 做 attention。标准做法下，每一步都要重新计算所有历史 token 的 Q、K、V。
 
 **浪费在哪里**：第 $t$ 步生成时，前 $t-1$ 个 token 的 K/V 在第 $t-1$ 步已经算过了，而它们的值不会变——K/V 只依赖各自 token 的输入，不依赖后续 token。重新计算是纯浪费。
@@ -62,7 +64,16 @@ $$2 \times 32 \times 32 \times 128 \times 1024 \times 1 \times 2 = 536{,}870{,}9
 
 即约 **0.5 GB per 1K token（单条请求）**。
 
-序列长度翻倍到 2K 就是 1 GB；batch size=4、序列 1K 就是 2 GB。
+**不同配置的 KV Cache 大小速查**（LLaMA-2 7B MHA，BF16）：
+
+| 上下文长度 | batch=1（本地部署） | batch=4（小型服务） | batch=16（云端服务） |
+|-----------|-------------------|-------------------|-------------------|
+| 1K token  | 0.5 GB            | 2 GB              | 8 GB              |
+| 4K token  | 2 GB              | 8 GB              | 32 GB             |
+| 16K token | 8 GB              | 32 GB             | 128 GB            |
+| 128K token| 64 GB             | —（单卡放不下）    | —                 |
+
+本地部署（如用 llama.cpp、Ollama 跑模型）时 batch size 通常就是 1——只有你一个人在用，每次只处理一条请求。上表 batch=1 这列就是本地单用户的内存压力。4K 上下文 2 GB 是可以接受的；想跑 16K 长上下文就需要约 8 GB 专门留给 KV Cache，加上模型权重本身就很紧张了。
 
 **和模型权重的对比**：7B 模型权重本身约 14 GB（BF16）。在 batch size=4、序列长度 2K 时，KV Cache 已经达到 4 GB，约占模型权重的 30%。随着序列长度增长，KV Cache 的占比会持续上升。
 
@@ -76,7 +87,7 @@ $$2 \times 32 \times 32 \times 128 \times 1024 \times 1 \times 2 = 536{,}870{,}9
 
 **效果**：Prefill 阶段跳过已缓存的前缀，直接从新内容开始计算。系统 prompt 越长、请求频率越高，节省越显著。对于"1000 token 系统 prompt + 50 token 用户问题"这类场景，Prefill 计算量可以减少 95%。
 
-**工程实现要点**：缓存的 key 通常是 token 序列的哈希值，前缀完全一致才能命中。一旦用户消息插入，后续所有 token 的 KV 都需要重新计算（因为 attention 是 causal 的，后面的 token 依赖前面）。
+**工程实现要点**：服务端需要判断"这次请求的前缀是否和之前某次请求完全一样"，才能复用已有的 KV Cache。实现方式是对 token 序列计算哈希值——把 token ID 列表 `[101, 2045, 3891, ...]` 转成一个固定长度的数字指纹，哈希相同意味着序列内容完全一致。**前缀必须字符级完全一致才能命中**：哪怕多一个空格、换一个标点，哈希值就变了，无法复用。一旦用户消息插入系统 prompt 之后，后续所有 token 的 KV 都需要重新计算（causal attention 的特性：每个 token 的 K/V 依赖它之前所有 token）。
 
 主流推理框架（vLLM、TGI、SGLang）都支持 prefix caching。Anthropic API 的 prompt caching 功能本质上是同一机制的服务端实现。
 

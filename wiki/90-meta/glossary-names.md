@@ -8,6 +8,7 @@ LLM 论文喜欢用缩写、神话人物、音乐术语、地名当名字，真�
 | **BPE** | **B**yte **P**air **E**ncoding | 数据压缩算法的名称，原本由 Philip Gage 于 1994 年提出用于压缩，被 Sennrich et al. 2016 引入 NLP 做 subword tokenization |
 | **ccNet** | **C**ommon **C**rawl **Net**work（pipeline）| 直接描述：用于处理 Common Crawl 数据的网络（管线），无特别梗，功能命名 |
 | **Chinchilla** | 无缩写，就是"龙猫/毛丝鼠" | DeepMind 用来修正 Gopher 的模型。Chinchilla（毛丝鼠）比 Gopher（囊地鼠）小——对应论文的核心发现：更小的模型用更多数据训练，比 Gopher 这样"过大欠训"的模型更高效 |
+| **DETR** | **DE**tection **TR**ansformer | 功能描述性缩写，Facebook AI 2020。不是词汇，纯拼写：DE=Detection，TR=Transformer，去掉中间的 tec 和 ans，保留头尾辅音让发音顺畅（读 "dee-ter"）|
 | **DCLM** | **D**ata**C**omp for **L**anguage **M**odels | DataComp 是一个数据竞赛框架（"DataComp-for-LM"），LM 前面的 DC 对应 "DataComp"。DataComp 本身是"Data Competition"的缩写，强调用竞赛方式找最优数据过滤策略 |
 | **Deita** | **D**ata-**E**fficient **I**nstruction **T**uning for **A**lignment | "data"的变形拼写，暗示数据效率是核心。deita 不是已有词汇，纯粹是拼写游戏 |
 | **Dolma** | **D**ata f**o**r **O**pen **L**anguage **M**odels' **A**ppetite | AI2 的 3T token 开放语料库。dolma 也是中东/地中海料理中的"填馅蔬菜"（如用葡萄叶包的米饭），契合"喂饱语言模型"的隐喻 |

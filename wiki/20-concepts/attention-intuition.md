@@ -276,24 +276,22 @@ output = (weights @ V).squeeze(1)   # [N, D]
 
 ### 5. GQA（Grouped Query Attention）
 
-**多个 Q head 共享同一组 K/V head，而不是每个 Q head 各有一组 K/V。**
+**标准 MHA 里每个 Q head 各有一组对应的 K/V head（H 对 H）。GQA 把 K/V head 数量减少到 H_KV < H，让多个 Q head 共享同一组 K/V，从而大幅降低推理时 KV Cache 的内存占用。**
 
-这是 Multi-Head Attention 的一种变体，解决的是**推理时 KV Cache 内存过大**的问题。
+回顾前面 MHA 的符号：H 个头，每头维度 $D_{head} = D/H$，Q/K/V 的形状都是 `[B, H, L, D_head]`。在 GQA 里，Q 保持 H 个头，但 K/V 只有 H_KV 个头（H_KV < H），每 G = H/H_KV 个 Q head 共享一组 K/V：
 
 ```python
-# 标准 MHA：H_Q 个 Q head，H_KV = H_Q 个 K/V head（1:1）
-# GQA：H_Q 个 Q head，H_KV < H_Q 个 K/V head，每 H_Q/H_KV 个 Q 共享一组 K/V
+H    = 32   # Q head 数，和 MHA 一样
+H_KV = 8    # K/V head 数，比 Q 少（GQA 常见配置）
+G    = H // H_KV   # = 4，每组 4 个 Q head 共享一组 K/V
+D_head = D // H    # 每头维度，和 MHA 一样
 
-H_Q = 32    # Q head 数
-H_KV = 8    # K/V head 数（GQA 常见配置）
-G = H_Q // H_KV  # = 4，每组 4 个 Q 共享一组 K/V
-
-Q = W_Q(x).reshape(B, L, H_Q, D_head)      # [B, L, 32, D_head]
-K = W_K(x).reshape(B, L, H_KV, D_head)     # [B, L, 8,  D_head]
-V = W_V(x).reshape(B, L, H_KV, D_head)     # [B, L, 8,  D_head]
+Q = W_Q(x).reshape(B, L, H,    D_head)   # [B, L, 32, D_head]，和 MHA 相同
+K = W_K(x).reshape(B, L, H_KV, D_head)  # [B, L,  8, D_head]，只有 8 组
+V = W_V(x).reshape(B, L, H_KV, D_head)  # [B, L,  8, D_head]
 
 # 推理时 KV Cache：只需存 8 组 K/V，而不是 32 组
-# 训练时通过 expand/repeat 把 K/V 广播到 32 组后正常计算
+# 计算时把 K/V 广播到 32 组，再正常做 attention
 K_expanded = K.repeat_interleave(G, dim=2)  # [B, L, 32, D_head]
 V_expanded = V.repeat_interleave(G, dim=2)  # [B, L, 32, D_head]
 ```
@@ -308,7 +306,11 @@ V_expanded = V.repeat_interleave(G, dim=2)  # [B, L, 32, D_head]
 
 ---
 
-### 6. Sliding Window + Global（Longformer 风格）
+### 6. Sparse Attention（稀疏注意力）
+
+标准 Full Self-Attention 里每个 token 都 attend 所有其他 token（dense）。Sparse Attention 的思路是：**大多数 token 对之间的 attention 权重接近 0，不如一开始就不计算它们**，只保留真正有意义的连接，把复杂度从 $O(L^2)$ 降到接近线性。
+
+Sparse Attention 有多种实现方式，最主流的是 **Sliding Window + Global（Longformer 风格）**：
 
 **大多数 token 只看局部窗口，少数"全局 token"可以看全部 token。**
 
@@ -331,6 +333,10 @@ for i, token in enumerate(tokens):
 **复杂度**：$O(L \cdot w + n_g \cdot L)$，其中 $w$ 是窗口大小，$n_g$ 是 global token 数量。$n_g \ll L$ 时接近线性。
 
 **直觉**：大多数信息可以通过局部传播（普通 token 从邻居获取），少数关键位置需要全局视野（global token 统筹全局）。
+
+**BigBird 的扩展**：在 Sliding Window + Global 基础上再加一组随机连接（每个 token 还随机 attend 少量远端 token），理论上保证任意两个 token 之间的信息可以在 O(1) 层内传播。用于基因组序列（序列极长，局部窗口不够）。
+
+**Sparse Attention 的局限**：质量有损失——全局 attention 允许任意两个 token 直接交互，Sparse 版本需要多层间接传播才能覆盖远距离依赖，在需要精细全局推理的任务（如复杂问答）上会有差距。超长文档（>8K token）且局部信息为主时才值得用。
 
 **使用**：Longformer（文档级 NLP）、BigBird（基因组序列）、超长上下文任务。
 
@@ -400,27 +406,14 @@ Q = W_UQ(c_Q)             # [L, H, D_head]
 
 ## 变体对比
 
-| | Full Self | Causal Self | Cross | Local Self | GQA | Sliding Window | Factorized | MLA |
+| | Full Self | Causal Self | Cross | Local Self | GQA | Sparse | Factorized | MLA |
 |---|---|---|---|---|---|---|---|---|
-| **核心变化** | 基础双向 | mask 未来 | Q/KV 不同源 | 只看近邻 | K/V head 共享 | 局部+全局 token | 分维度 attention | K/V 先压缩 |
-| **典型模型** | BERT | GPT/LLaMA | Transformer Dec | MTR | LLaMA 3/Mistral | Longformer | Wayformer | DeepSeek-V2 |
+| **核心变化** | 基础双向 | mask 未来 | Q/KV 不同源 | 只看近邻 | K/V head 共享 | 局部窗口+少量全局 | 分维度 attention | K/V 先压缩 |
+| **典型模型** | BERT | GPT/LLaMA | Transformer Dec | MTR | LLaMA 3/Mistral | Longformer/BigBird | Wayformer | DeepSeek-V2 |
 | **解决什么** | — | 自回归生成 | 跨序列信息 | 大规模 token | 推理内存 | 超长文档 | 多维结构输入 | 推理内存（更极致）|
-| **复杂度** | $O(L^2D)$ | $O(L^2D)$ | $O(L_QL_{KV}D)$ | $O(NkD)$ | $O(L^2D)$ | $O(Lw)$ | $O(TS(T+S)D)$ | $O(L^2D)$ |
+| **复杂度** | $O(L^2D)$ | $O(L^2D)$ | $O(L_QL_{KV}D)$ | $O(NkD)$ | $O(L^2D)$ | $O(LwD)$ | $O(TS(T+S)D)$ | $O(L^2D)$ |
 
 多头版本（MHA）可以和前四种变体任意组合，GQA/MLA 是 MHA 本身的变体。
-
-**关键规律**：**输出的行数永远等于 Q 的行数**，不管 K/V 有多少行。
-
----
-|---|---|---|---|---|
-| **Q/K/V 来自** | 同一序列，双向 | 同一序列，单向（只看左） | Q 来自 A，K/V 来自 B | 同一序列的近邻子集 |
-| **能看到"未来"？** | 是 | **否**（右上角 mask） | — | 取决于近邻定义 |
-| **Q_len == KV_len？** | 是 | 是 | 不需要 | 是（但每个 Q 只看 k 个 K）|
-| **输出 shape** | `[L, D]` | `[L, D]` | `[Q_len, D]` | `[N, D]` |
-| **典型模型** | BERT、ViT、MTR Encoder | GPT、LLaMA、Qwen | Transformer Decoder、UniAD | MTR Encoder、Axial-DeepLab |
-| **复杂度（单头）** | $O(L^2 D)$ | $O(L^2 D)$ | $O(L_Q \cdot L_{KV} \cdot D)$ | $O(N \cdot k \cdot D)$ |
-
-多头版本的复杂度系数与单头相同（见「Multi-Head Attention」节推导）。
 
 **关键规律**：**输出的行数永远等于 Q 的行数**，不管 K/V 有多少行。
 
@@ -482,6 +475,14 @@ K = V = [局部 128 条 polyline]
 **为什么要 W_Q/W_K/W_V 三个矩阵，而不是直接用 x 做点积？**
 
 三个独立线性变换给模型自由度：Q 学"如何查询"，K 学"如何被找到"，V 学"聚合什么信息"。直接用 x 做点积相当于三个矩阵都是单位矩阵，表达能力弱很多。
+
+**Causal Attention 是所有 Encoder-Decoder 架构都需要的吗？**
+
+不是。Causal Attention 解决的是**自回归生成**中的问题：训练时已知的过去和未知的未来被拼在同一个序列里，必须 mask 住未来防止"作弊"。Wayformer 完全不需要它，因为：
+- Encoder 只处理历史数据（已知的过去 1 秒），全部已知，不存在"未来 token"，可以用 Full Self-Attention 双向看
+- Decoder 一次性输出全部 80 步轨迹（`[K, 80, 4]`），不是自回归逐步生成的——历史和未来严格分离，历史进 Encoder，未来由 Decoder 直接输出
+
+只有"已知和未知混在同一序列里，且逐步生成"的场景（LLM 的 next-token prediction）才需要 Causal Mask。
 
 ---
 

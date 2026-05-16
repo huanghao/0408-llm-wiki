@@ -44,6 +44,54 @@ Road Graph:         [8, 1,  128, 13] → 8 个 agent × 128 条道路段 × 13 �
 Traffic Light:      [8, 10, 16, 10]  → 8 个 agent × 10 帧 × 16 个信号灯 × 10 维
 ```
 
+### 架构总览
+
+```mermaid
+flowchart TD
+    subgraph INPUT["输入（4 种模态，WOMD 配置）"]
+        H["Agent History\n[A=8, T=10, 1, D_h=12]"]
+        I["Agent Interactions\n[A=8, T=10, S_i=8, D_i=12]"]
+        R["Road Graph\n[A=8, 1, S_r=128, D_r=13]"]
+        TLS["Traffic Light\n[A=8, T=10, S_tls=16, D_tls=10]"]
+    end
+
+    subgraph PROJ["Step 1：投影 + token 化"]
+        PH["Linear → [A, T, D]"]
+        PI["Linear → [A, T×S_i, D]"]
+        PR["Linear → [A, S_r, D]"]
+        PT["Linear → [A, T×S_tls, D]"]
+    end
+
+    subgraph FUSION["Step 2：Scene Encoder（三种 Fusion 策略之一）"]
+        EF["Early Fusion\nconcat → [A, L≈378, D]\nN层 Self-Attn（跨模态）"]
+        LF["Late Fusion\n各模态独立 Encoder\n再 concat"]
+        HF["Hierarchical Fusion\n独立 Encoder → Cross-Modal Encoder"]
+    end
+
+    subgraph DEC["Step 3：Trajectory Decoder（N_dec 层）"]
+        SA["Self-Attn\nK seeds 间交流\n[A, K, D]"]
+        CA["Cross-Attn\nseeds → scene_enc\nQ:[A,K,D]  KV:[A,L,D]"]
+    end
+
+    subgraph OUT["Step 4：输出头"]
+        TRAJ["轨迹回归\n[A, K, T_future, 4]\n(μx, μy, σx, σy)"]
+        PROB["概率\n[A, K]"]
+    end
+
+    H --> PH --> EF
+    I --> PI --> EF
+    R --> PR --> EF
+    TLS --> PT --> EF
+    EF -->|"scene_enc [A,L,D]"| CA
+    LF -->|"scene_enc [A,L,D]"| CA
+    HF -->|"scene_enc [A,L,D]"| CA
+    CA --> SA --> CA
+    CA --> TRAJ
+    CA --> PROB
+```
+
+三种 Fusion 策略共享同一个 Decoder 结构，区别只在 Scene Encoder 部分。Early Fusion（所有模态直接 concat 后统一做 Self-Attn）在大模型配置下效果最好。
+
 ### 完整模型 QKV 伪代码（Early Fusion）
 
 先给一个从输入到输出的完整流程，说明 Q/K/V 在每个环节的来源：
@@ -95,7 +143,12 @@ seeds = nn.Parameter(randn(K, D))   # [K, D]，e.g. K=64
 #   A（agents）：同一场景内同时处理多个 agent，e.g. A=8 个被预测对象
 #   完整 shape: [B, A, L, D]，代码里通常把 B*A 合并处理
 #
-# seeds 是模型参数（[K, D]），对所有场景/agent 共享
+# seeds 是模型参数（nn.Parameter），和权重矩阵 W_Q/W_K/W_V 性质相同：
+#   - 训练时：通过反向传播更新，最终学到 K 种不同的"意图方向"
+#   - 推理时：直接使用训练好的固定值，不需要输入任何东西，也不是随机的
+#   类比：就像 W_Q 的权重在推理时是固定的，seeds 也是固定的已训练参数
+#
+# seeds 对所有场景/agent 共享——同一组 K 个 seeds 用于所有场景
 # 每个 agent 使用同一组 K 个 seeds，但 cross-attention 时各自 attend 不同的 scene_enc
 # 所以同一个 seed 对 agent-1 和 agent-2 会产生不同的输出轨迹
 #
@@ -583,78 +636,98 @@ for layer in remaining_encoder_layers:
 
 ---
 
-## 附录：各模态数据结构详解
+## 附录：各模态输入特征详解
 
-以 WOMD 配置（A=8，T=10，D=256）为例，展示每种模态的原始数据结构及其含义：
+以 WOMD 配置（A=8，T=10，D=256）为例，展示每种模态的原始数据结构及其含义。
 
-**Agent History** `[A=8, T=10, 1, D_h=12]`
+### 坐标系约定
 
-每个 agent 的历史轨迹，T=10 帧（1 秒，10Hz），D_h=12 个特征：
+Wayformer 采用 **agent-centric 坐标系**：以被预测 agent 在当前帧（最后一帧历史）的位置为原点，agent 朝向为 x 轴正方向，左侧为 y 轴正方向。每个 interested agent 各自有一套坐标系，同一场景里 8 个 agent 的坐标系互不相同。
 
+- Road Graph 的起点/终点坐标在原始数据里是绝对世界坐标，输入模型前会转换到以每个 agent 为中心的相对坐标
+- Traffic Light 的停止线位置同样转换为相对坐标
+- Agent History 的历史帧坐标：t=9（当前帧）的 (x,y) 约为 (0,0)，t=0（1秒前）的坐标反映了 agent 从哪里开过来
+
+---
+
+### Agent History `[A=8, T=10, 1, D_h=12]`
+
+每个 agent 的历史轨迹，T=10 帧（过去 1 秒，10 Hz），D_h=12 个特征：
+
+| 索引 | 字段名 | 单位 | 取值范围 | 含义 | 例子 |
+|------|--------|------|---------|------|------|
+| [0] | x | 米 | ±50m（典型） | 纵向位置（朝向方向） | `0.0`（当前帧）/ `-8.5`（1秒前，agent 从后方驶来） |
+| [1] | y | 米 | ±20m（典型） | 横向位置（左正右负） | `0.0`（当前帧）/ `0.3`（轻微偏左） |
+| [2] | vx | m/s | -30 ~ 30 | 纵向速度 | `13.5`（约 50 km/h 向前行驶） |
+| [3] | vy | m/s | -5 ~ 5 | 横向速度 | `-0.2`（轻微向右漂移） |
+| [4] | ax | m/s² | -5 ~ 5 | 纵向加速度 | `-1.2`（轻踩刹车减速） |
+| [5] | ay | m/s² | -3 ~ 3 | 横向加速度 | `0.1`（轻微方向盘回正） |
+| [6] | heading | 弧度 | -π ~ π | 全局朝向角（0=东，π/2=北） | `1.57`（朝北行驶） |
+| [7] | width | 米 | 1.5 ~ 2.5 | 车身宽度 | `1.9`（普通轿车） |
+| [8] | length | 米 | 3.5 ~ 6.0 | 车身长度 | `4.5`（普通轿车） |
+| [9] | height | 米 | 1.2 ~ 3.5 | 车身高度 | `1.5`（普通轿车）/ `3.2`（卡车） |
+| [10] | type_car | — | 0 或 1 | 是否机动车（车/摩托=1，行人/自行车=0） | `1` |
+| [11] | valid | — | 0 或 1 | 该帧是否有有效观测（遮挡/超出感知范围=0） | `1`（正常可见） |
+
+第四维 `S_h=1` 表示"每帧只有一个对象（自身）"，和 Interactions 的 `S_i=8`（每帧 8 个邻居）格式统一，方便用同一套 Polyline Encoder 处理。
+
+---
+
+### Agent Interactions `[A=8, T=10, S_i=8, D_i=12]`
+
+每个 agent 在每个时间步，周围最近 S_i=8 个邻居的状态。特征字段和 Agent History 完全相同（同一套 12 维），但坐标系转换到以该 agent 为中心（邻居的位置是"相对于我"的位置）。
+
+**例子**：agent-0 在 t=9（当前帧）的邻居列表：
 ```
-每帧 12 个特征（以 agent 自身为坐标原点的相对坐标系）：
-  [0]  x           当前位置 x（米）
-  [1]  y           当前位置 y（米）
-  [2]  vx          速度 x 分量（m/s）
-  [3]  vy          速度 y 分量（m/s）
-  [4]  ax          加速度 x（m/s²）
-  [5]  ay          加速度 y（m/s²）
-  [6]  heading     朝向角（弧度）
-  [7]  width       车宽（米）
-  [8]  length      车长（米）
-  [9]  height      车高（米）
-  [10] type_car    是否是机动车（0/1）
-  [11] valid       该帧是否有效（遮挡时为 0）
+邻居 0：(x=8.2, y=0.1, vx=12.8, ...)  → 前方 8m，几乎同速行驶的车
+邻居 1：(x=-5.1, y=0.0, vx=14.1, ...) → 后方 5m，稍快的跟车
+邻居 2：(x=3.3, y=3.6, vx=0.0, ...)   → 右前方约 5m，停着的车
+...
 ```
 
-**Agent Interactions** `[A=8, T=10, S_i=8, D_i=12]`
+注意：WOMD 的 Agent Interactions 特征和 Agent History 格式相同，**不包含 lane ID 字段**。模型通过 attention 机制隐式建立 agent 与道路的关联。
 
-每个 agent 周围最近的 S_i=8 个邻居的状态，特征和 History 一样，但坐标转换到以该 agent 为中心的相对坐标系（"邻居在我前方 10m，左方 3m"）。
+`T×S_i = 80` 个 token：每个 token 表示"在第 t 帧，第 j 个邻居相对于我的状态"。
 
-`T×S_i = 80` 个 token，时间步×邻居组合。每个 token 含义：在第 t 帧，第 j 个邻居相对于我的位置/速度/类型。
+---
 
-**Road Graph** `[A=8, 1, S_r=128, D_r=13]`
+### Road Graph `[A=8, 1, S_r=128, D_r=13]`
 
 距离每个 agent 最近的 S_r=128 条道路折线段，时间维度为 1（道路静态）：
 
-```
-每段 13 个特征（绝对世界坐标系）：
-  [0-1]  起点 (x, y)
-  [2-3]  终点 (x, y)
-  [4]    方向角
-  [5]    道路类型（0=直道，1=弯道，2=路口，3=人行横道…）
-  [6]    限速
-  [7]    是否双向
-  [8-9]  到 agent 的相对位置（将绝对坐标转为 agent 中心的相对坐标）
-  [10]   道路段 ID（场景内的整数编号，用于标识唯一的道路段）
-  [11]   是否在路口区域（0/1）
-  [12]   车道宽度（米）
-```
+| 索引 | 字段名 | 单位 | 含义 | 例子 |
+|------|--------|------|------|------|
+| [0-1] | start_x, start_y | 米（相对） | 道路段起点，相对 agent 坐标 | `(2.1, -3.4)`（agent 右前方 4m 处） |
+| [2-3] | end_x, end_y | 米（相对） | 道路段终点 | `(6.8, -3.5)`（沿车道方向延伸 5m） |
+| [4] | direction | 弧度 | 道路段方向角 | `0.03`（近似平行于 x 轴，即沿 agent 朝向方向延伸） |
+| [5] | road_type | — | 0=直道，1=弯道，2=路口，3=人行横道，4=停车区 | `0`（普通直道） |
+| [6] | speed_limit | km/h | 限速 | `50`（城市道路）/ `120`（高速）/ `0`（未知） |
+| [7] | is_bidirectional | — | 0 或 1，是否双向通行 | `0`（单向）/ `1`（双向） |
+| [8-9] | rel_x, rel_y | 米（相对） | 道路段中心点相对 agent 的位置（和 [0-3] 有冗余，方便检索） | `(4.5, -3.45)` |
+| [10] | segment_id | — | 场景内局部整数编号（0~127） | `42`（该场景的第 42 条道路段） |
+| [11] | is_intersection | — | 0 或 1，是否处于路口区域 | `0`（普通路段）/ `1`（路口内） |
+| [12] | lane_width | 米 | 车道宽度 | `3.5`（标准城市车道）/ `3.75`（高速车道） |
 
-**道路段 ID 的含义和作用**：
+**segment_id 说明**：场景内局部编号，不是全局 HD map 的 UUID。不同场景的 segment #42 是完全不同的道路段，通常作为索引使用而非直接输入浮点特征。
 
-- **编号范围**：场景内的局部整数编号（不是全局 HD map 的 UUID），在该场景的 128 条道路段内唯一，通常是 0~127 这样的小整数。WOMD 的数据格式里，每个场景单独编号——不同场景的 segment #5 是完全不同的道路段。
-- **作用**：主要用于 Road Graph 内部，描述道路段之间的连接关系（"segment #3 的终点连接 segment #7 的起点"）。Wayformer 的向量化输入里，这个 ID 是用来区分不同段的标识符，但因为是局部编号，通常作为 index 而不是直接作为浮点特征输入模型。
+---
 
-注：原先写的"Agent Interactions 里记录每个邻居当前所在的 lane ID"是错误的——WOMD 的 Agent Interactions 特征和 Agent History 格式相同（位置/速度/类型等），不包含 lane ID 字段。模型通过 attention 机制隐式地建立 agent 和道路段的关联，不依赖显式的 lane ID 跨模态引用。
-
-**Traffic Light State** `[A=8, T=10, S_tls=16, D_tls=10]`
+### Traffic Light State `[A=8, T=10, S_tls=16, D_tls=10]`
 
 距离每个 agent 最近的 S_tls=16 个交通灯在 T=10 帧的状态：
 
-```
-每个时间步每个信号灯 10 个特征：
-  [0-1]  停止线位置 (x, y)（绝对坐标）
-  [2]    信号状态（0=未知，1=绿，2=红，3=黄，4=闪烁红，5=箭头绿，6=停止）
-  [3]    置信度（感知系统对该信号灯检测的置信度，0~1）
-  [4-5]  信号灯杆位置 (x, y)
-  [6]    朝向角（信号灯面对哪个方向）
-  [7]    关联的车道 lane ID（哪条车道受这个灯控制）
-  [8]    距离 agent 的距离
-  [9]    是否有效（超出感知范围时为 0）
-```
+| 索引 | 字段名 | 单位 | 含义 | 例子 |
+|------|--------|------|------|------|
+| [0-1] | stop_x, stop_y | 米（相对） | 停止线位置，相对 agent 坐标 | `(25.3, -1.2)`（前方 25m 的停止线） |
+| [2] | signal_state | — | 0=未知，1=绿，2=红，3=黄，4=闪烁红，5=箭头绿，6=停止 | `2`（红灯） |
+| [3] | confidence | — | 0~1，感知系统检测置信度 | `0.97`（高置信）/ `0.45`（遮挡/距离远，置信低） |
+| [4-5] | pole_x, pole_y | 米（相对） | 信号灯杆位置 | `(25.1, 4.8)`（停止线旁路边） |
+| [6] | pole_heading | 弧度 | 信号灯朝向（面向哪个方向的车流） | `-1.57`（面向南方来车） |
+| [7] | lane_id | — | 受此灯控制的车道编号 | `3`（对应 Road Graph 里 segment_id=3 的车道） |
+| [8] | distance | 米 | 信号灯到 agent 的直线距离 | `26.1` |
+| [9] | valid | — | 0 或 1，超出感知范围时为 0 | `1`（有效）/ `0`（超出 50m 感知范围） |
 
-**为什么不同 agent 的 Road Graph 和 TLS 可能重叠**：8 个 agent 都在同一场景里，如果两个 agent 相邻，它们各自最近的 128 条道路段会有大量重叠（只是以各自为中心的相对坐标不同）。这是 agent-centric 设计的重复编码代价。
+**关于重叠**：8 个 interested agent 处于同一场景，相邻 agent 各自最近的 128 条道路段和 16 个信号灯会大量重叠——只是每个 agent 的相对坐标不同。这是 agent-centric 设计的重复编码代价（Wayformer 局限之一，UniAD 的 scene-centric 设计解决了这个问题）。
 
 ---
 

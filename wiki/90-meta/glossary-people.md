@@ -64,6 +64,28 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 
 ---
 
+## 计算机视觉 / 目标检测
+
+| 姓名 | 所在机构 | 背景 | 研究方向 | 代表工作 |
+|---|---|---|---|---|
+| **Nicolas Carion** | Meta FAIR（现 Scale AI）| École Polytechnique，~30 岁 | 目标检测，视觉 Transformer | DETR 第一作者（等同贡献）|
+| **Francisco Massa** | Meta FAIR | INRIA，~32 岁 | 视觉模型，PyTorch torchvision 核心维护者 | DETR 第一作者（等同贡献），MaskRCNN-benchmark |
+| **Alexander Kirillov** | Meta FAIR / OpenAI | 俄罗斯出身，Skoltech，~33 岁 | 全景分割，基础视觉模型 | DETR 联合作者，Panoptic FPN，SAM（Segment Anything）主要作者 |
+| **Jiyang Gao** | Waymo | 工业界研究员，~33 岁 | 行为预测，场景表征 | VectorNet 第一作者（等同贡献），Waymo 运动预测核心成员 |
+| **Dragomir Anguelov** | Waymo（VP Research）| Stanford PhD，Waymo 研究副总裁，~48 岁 | 自动驾驶整体，3D 感知，行为预测 | VectorNet 联合作者，Waymo 几乎所有感知/预测核心论文的资深作者 |
+| **Cordelia Schmid** | Google Research / INRIA | INRIA 研究员，IEEE/ACL Fellow，~55 岁 | 计算机视觉，视频理解，representation learning | VectorNet 联合作者，VideoBERT，Contrastive Learning 系列 |
+
+---
+
+## 自动驾驶运动预测
+
+| 姓名 | 所在机构 | 背景 | 研究方向 | 代表工作 |
+|---|---|---|---|---|
+| **Shaoshuai Shi** | Max Planck Institute for Informatics | 博士 MPI，~30 岁 | 点云 3D 检测，运动预测 | PointRCNN、PV-RCNN（3D 检测），MTR/MTR++（Waymo Challenge 2022/2023 冠军）|
+| **Bernt Schiele** | Max Planck Institute for Informatics | 计算机视觉资深教授，~57 岁 | 视觉理解，行人检测，场景理解 | MTR/MTR++ 通讯作者，多个 CVPR/ICCV 最佳论文 |
+
+---
+
 ## 自动驾驶感知 / 3D 视觉
 
 | 姓名 | 所在机构 | 背景 | 研究方向 | 代表工作 |

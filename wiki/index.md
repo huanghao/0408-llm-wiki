@@ -47,6 +47,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [t-SNE and Embedding Visualization](20-concepts/tsne-dimensionality-reduction.md): 高维 embedding 可视化方法，适合看局部邻域和覆盖，不适合直接证明数据质量
 
 **部署与推理**
+- [LLM 推理框架概览](20-concepts/llm-inference-frameworks.md): vLLM/SGLang/TensorRT-LLM/TGI/llama.cpp/Ollama/MLX/MLC LLM 的核心技术、名称来源、维护组织和选型决策树
 - [ONNX](20-concepts/onnx.md): 跨框架模型中间格式，导出、运行时、图优化、量化全览
 - [量化（Quantization）](20-concepts/quantization.md): 低精度部署为什么是开放权重生态的基础设施
 
@@ -89,7 +90,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Word Embedding](20-concepts/word-embedding.md): 词向量基础
 - [Attention 直觉：Self/Cross/Local 三种模式](20-concepts/attention-intuition.md): Q/K/V 的图书馆类比，三种 attention 变体的核心计算和 shape 规律，各场景中 QKV 的直觉解释
 - [位置编码（PE）](20-concepts/positional-encoding.md): 正弦/余弦/可学习/0初始化/RoPE/ALiBi 各类 PE 的原理、外推性、参数量对比，驾驶场景里坐标编码的特殊设计
-- [Attention 优化技术](20-concepts/attention-optimization.md): Factorized/FlashAttention/MQA-GQA/Latent Queries/Linear Attention/RoPE——各类优化手段的原理、适用场景和工业采用现状
+- [Attention 优化技术](20-concepts/attention-optimization.md): FlashAttention/RoPE/ALiBi/Latent Queries/Linear Attention——不改变 attention 语义、只改变计算方式的加速手段；改变 attend 范围的变体（GQA/MLA/Factorized 等）见 attention-intuition
 - [Tensor 操作参考](20-concepts/tensor-operations.md): reshape/permute/expand/einsum 详解，内存布局原理，为什么 reshape 和 for 循环等价
 - [矩阵书写惯例](20-concepts/matrix-notation-conventions.md): 行向量（代码/PyTorch）vs 列向量（数学/论文）两种惯例的对应关系，读论文时快速转换
 - [MFU](20-concepts/mfu.md): 模型 FLOPs 利用率
@@ -104,6 +105,7 @@ This is the content-oriented entry point for the LLM wiki.
 
 - [Waymo Rider-Only Safety Study（7.1M miles）](30-papers/waymo-safety-rider-only-2312.12675.md): L4 商业部署安全性实证，三层结果指标+漏报调整方法论，police-reported 事故率 -55%、有伤害事故率 -80%，Phoenix/SF 统计显著，Traffic Injury Prevention 2024
 - [ADS 功能不足分类与 Daruma 缓解架构（Fu et al., 2024）](30-papers/ads-fi-characterization-daruma-2404.09557.md): 首篇 ADS FI 系统性实证研究，16 类 OI 分类表（世界模型/交通规则/运动规划/ODD），FI 是系统故障 5 倍，Daruma 跨通道仲裁架构，NXP/TU/e/TNO，arXiv 2024
+- [DETR: End-to-End Object Detection with Transformers](30-papers/detr-2005.12872.md): 集合预测 + 匈牙利二分匹配消除 NMS 和 anchor，Transformer encoder-decoder + N object queries，COCO 与 Faster R-CNN 持平，大目标 AP_L +7.8，开创 detection transformer 范式，Facebook AI，ECCV 2020
 - [PointNet：点云深度学习](30-papers/pointnet-1612.00593.md): 逐点 MLP + max pooling 对称函数直接消费原始点云，无需体素化，置换不变，O(N) 复杂度，分类/零件分割/语义分割三任务 SOTA，快 Subvolume 141 倍，Stanford，CVPR 2017
 - [Perceiver](30-papers/perceiver-2103.03206.md): cross-attention bottleneck 把超高维输入（50k 像素/音频/点云）压入小 latent 数组，无领域专用结构处理任意模态，ImageNet/AudioSet/ModelNet40 全覆盖，ICML 2021
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
@@ -124,8 +126,10 @@ This is the content-oriented entry point for the LLM wiki.
 - [TrafficGen](30-papers/trafficgen-2210.06609.md): 数据驱动交通场景生成，encoder-decoder + 自回归从 WOMD 学习车辆放置和长轨迹，生成数据改善 RL 安全性，ScenarioNet 场景嵌入工具，ICRA 2023
 - [Waymo Open Motion Dataset（WOMD）](30-papers/waymo-open-motion-dataset.md): Waymo 运动预测数据集，103K 场景×20s，HD map + agent 状态序列，运动预测 benchmark 标准，无原始传感器数据
 - [Argoverse Motion Forecasting](30-papers/argoverse-motion-forecasting.md): Argo AI 运动预测 benchmark，Brier-minFDE 为主指标（距离+置信度综合），速度自适应 MR 阈值，与 WOMD 互补
+- [VectorNet: Encoding HD Maps and Agent Dynamics](30-papers/vectornet-2005.04259.md): 向量化 HD 地图和轨迹 + 层次化 GNN（polyline 子图 + 全局交互图）+ 图补全辅助任务，参数减少 70% 且 FLOPs 降 200×，Argoverse SOTA，Waymo/Google，CVPR 2020
 - [Wayformer](30-papers/wayformer-2207.05844.md): 同质化 attention 架构家族，Early/Late/Hierarchical 三种融合策略系统对比，Early Fusion 最优，WOMD+Argoverse 双榜 SOTA，Waymo，ICRA 2023
 - [MTR: Motion Transformer](30-papers/mtr-2209.13508.md): Motion Query Pair（静态意图锚点+动态搜索查询）驱动迭代轨迹精化，WOMD 边际/联合预测双榜第一，Max Planck Institute，NeurIPS 2022
+- [MTR++: Multi-Agent Motion Prediction](30-papers/mtrpp-2306.17770.md): Symmetric Context Encoder（共享场景编码）+ Mutually-Guided Intention Querying（跨 agent 意图交流），Waymo Challenge 2022/2023 双冠，TPAMI 2024
 - [MotionDiffuser](30-papers/motiondiffuser-2306.03083.md): 扩散模型学习多 agent 轨迹联合分布，置换不变 denoiser + PCA 压缩 + 推理时可微约束采样（attractor/repeller），WOMD SOTA，CVPR 2023 Highlight
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用

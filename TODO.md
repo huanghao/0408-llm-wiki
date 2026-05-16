@@ -3,6 +3,10 @@
 - 26年值得关注的论文
 - 设计一个查看新论文的探索流程
 
+## PNC模型
+
+现在看的wayformer和mtr都是prediction，还没有看过planning模型，也没有看过control的部分
+
 
 ## 文章 C：后训练 RL，用小模型跑通
 
