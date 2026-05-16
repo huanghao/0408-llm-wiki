@@ -74,3 +74,22 @@
 - Model-based RL：agent 先学环境模型再规划，Dreamer/MuZero 的路线
 - Multi-agent RL：多个 agent 互相博弈，OpenAI Five / 星际争霸 AI
 - Offline RL：只用历史数据训练，不能和环境交互，适合医疗/自驾场景
+
+## 这是哪里看来的，还有其他吗？
+
+BEVFusion：多传感器融合（相机 + LiDAR）框架，性能和效率都很强（Zhijian Liu）
+FlashDriveVLA：algorithm + system co-design
+做“高效AI + 自动驾驶”的顶级研究者，偏工程落地
+3）ParoQuant（W4A8量化） // 工程硬优化
+
+## deer-flow
+
+https://github.com/bytedance/deer-flow
+字节跳动做的，42.5k stars，2026 年 2 月底刚发布 2.0
+ 一个多 agent 编排框架，定位是"能研究、能写代码、能创作内容"的超级 agent  harness。核心思路是主 agent 拆解任务后派发给专用子 agent，每个子 agent  在沙箱里独立执行
+
+## https://github.com/unslothai/unsloth
+
+## adaboost
+
+## smart agent

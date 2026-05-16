@@ -64,6 +64,15 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 
 ---
 
+## 自动驾驶感知 / 3D 视觉
+
+| 姓名 | 所在机构 | 背景 | 研究方向 | 代表工作 |
+|---|---|---|---|---|
+| **Charles R. Qi** | Waymo（前 Stanford）| Stanford PhD（Guibas 组），~33 岁 | 点云深度学习，3D 目标检测 | PointNet（CVPR 2017）、PointNet++（NeurIPS 2017），Waymo 3D 感知核心成员 |
+| **Leonidas J. Guibas** | Stanford | 几何算法先驱，斯坦福教授，~75 岁 | 计算几何，3D 形状分析，点云 | PointNet 通讯作者，Shape2Vec，多个 3D 视觉基础工作 |
+
+---
+
 ## LLM 系统 / 基础设施
 
 | 姓名 | 所在机构 | 背景 | 研究方向 | 代表工作 |

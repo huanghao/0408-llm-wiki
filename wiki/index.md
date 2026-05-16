@@ -65,9 +65,33 @@ This is the content-oriented entry point for the LLM wiki.
 **概率与统计**
 - [概率分布速查](20-concepts/probability-distributions.md): 幂律、指数、泊松、对数正态、GMM、Pareto、Weibull、Beta、Dirichlet、负二项、学生 t——密度函数/均值方差/应用/图形判断/统计检验
 
+**模型架构与推理**
+- [Transformer 架构](20-concepts/transformer-architecture.md): Block 结构（Residual/LayerNorm/FFN/Pre-LN vs Post-LN），三类架构（Encoder-only/Decoder-only/Encoder-Decoder），token 前向传播完整 shape 路径
+- [自回归生成](20-concepts/autoregressive-generation.md): teacher forcing vs 自回归的区别，Greedy/Beam/Temperature/Top-p/Top-k 采样策略，为什么推理比训练慢，引出 KV cache
+- [KV Cache 与 Prompt Cache](20-concepts/kv-cache.md): Prefill vs Decode 阶段，K/V 缓存原理，内存公式与 7B 估算，Prompt Cache 前缀复用，PagedAttention（vLLM）
+- [LoRA / QLoRA](20-concepts/lora-qlora.md): 低秩分解 W+BA，7B full fine-tune 显存拆解（约 84 GB），QLoRA NF4+double quant，单卡 48 GB 跑 65B
+
+**微调与对齐**
+- [Instruction Tuning](20-concepts/instruction-tuning.md): 指令微调的数据来源、演化路线与关键论文导读
+- [RLHF](20-concepts/rlhf.md): InstructGPT、DPO、PPO、GRPO 的完整对比
+
+**训练与优化**
+- [Loss Functions](20-concepts/loss-functions.md): NLL、KL、DPO、REINFORCE 的选择决策树
+- [Softmax 与交叉熵](20-concepts/softmax-and-cross-entropy.md): softmax 求导过程，交叉熵损失与 softmax 的链式法则，与 Actor 梯度更新的对比
+- [强化学习基础](20-concepts/rl-fundamentals.md): 从监督学习的边界出发，覆盖 agent/环境/策略/V值/Q值/Advantage/REINFORCE/Actor-Critic，配老虎机和格子世界代码
+- [Bellman 方程](20-concepts/bellman-equation.md): V 值的自引用递推关系，策略迭代收敛的数学基础，TD 误差的来源
+- [参数调度：衰减、Warmup 与 Clip](20-concepts/parameter-scheduling.md): 指数/线性/余弦/阶梯/Warmup+余弦五种调度形式对比，以及 PPO clip 为什么不是衰减
+- [REINFORCE](20-concepts/reinforce.md): 策略梯度基础算法，奖励/Return/Advantage 的区别
+- [PPO 逐行讲解](20-concepts/ppo-explained.md): PPO 的梯度机制与监督学习的区别
+
 **基础概念**
 - [Tokenization](20-concepts/tokenization.md): BPE、WordPiece、SentencePiece
 - [Word Embedding](20-concepts/word-embedding.md): 词向量基础
+- [Attention 直觉：Self/Cross/Local 三种模式](20-concepts/attention-intuition.md): Q/K/V 的图书馆类比，三种 attention 变体的核心计算和 shape 规律，各场景中 QKV 的直觉解释
+- [位置编码（PE）](20-concepts/positional-encoding.md): 正弦/余弦/可学习/0初始化/RoPE/ALiBi 各类 PE 的原理、外推性、参数量对比，驾驶场景里坐标编码的特殊设计
+- [Attention 优化技术](20-concepts/attention-optimization.md): Factorized/FlashAttention/MQA-GQA/Latent Queries/Linear Attention/RoPE——各类优化手段的原理、适用场景和工业采用现状
+- [Tensor 操作参考](20-concepts/tensor-operations.md): reshape/permute/expand/einsum 详解，内存布局原理，为什么 reshape 和 for 循环等价
+- [矩阵书写惯例](20-concepts/matrix-notation-conventions.md): 行向量（代码/PyTorch）vs 列向量（数学/论文）两种惯例的对应关系，读论文时快速转换
 - [MFU](20-concepts/mfu.md): 模型 FLOPs 利用率
 - [Ablation Study](20-concepts/ablation-study.md): 消融实验方法论
 - [Synthetic Data with Verification](20-concepts/synthetic-data-with-verification.md): 合成数据与验证
@@ -75,13 +99,12 @@ This is the content-oriented entry point for the LLM wiki.
 - [随机森林（Random Forest）](20-concepts/random-forest.md): 集成学习方法，bagging + 特征随机性的决策树集成
 - [高斯混合模型（GMM）](20-concepts/gaussian-mixture-model.md): K 个高斯加权叠加建模多峰分布，运动预测轨迹输出的主流方式，Winner-Takes-All loss 驱动多模态分化
 - [分布式训练](20-concepts/distributed-training.md): 数据并行 vs 模型并行，AllReduce 梯度同步原理，DistributedDataParallel，数据切分提升 I/O 效率
-- [Attention 优化技术](20-concepts/attention-optimization.md): Factorized/FlashAttention/MQA-GQA/Latent Queries/Linear Attention/RoPE——各类优化手段的原理、适用场景和工业采用现状
-- [Tensor 操作参考](20-concepts/tensor-operations.md): reshape/permute/expand/einsum 详解，内存布局原理，为什么 reshape 和 for 循环等价
 
 ## Papers
 
 - [Waymo Rider-Only Safety Study（7.1M miles）](30-papers/waymo-safety-rider-only-2312.12675.md): L4 商业部署安全性实证，三层结果指标+漏报调整方法论，police-reported 事故率 -55%、有伤害事故率 -80%，Phoenix/SF 统计显著，Traffic Injury Prevention 2024
 - [ADS 功能不足分类与 Daruma 缓解架构（Fu et al., 2024）](30-papers/ads-fi-characterization-daruma-2404.09557.md): 首篇 ADS FI 系统性实证研究，16 类 OI 分类表（世界模型/交通规则/运动规划/ODD），FI 是系统故障 5 倍，Daruma 跨通道仲裁架构，NXP/TU/e/TNO，arXiv 2024
+- [PointNet：点云深度学习](30-papers/pointnet-1612.00593.md): 逐点 MLP + max pooling 对称函数直接消费原始点云，无需体素化，置换不变，O(N) 复杂度，分类/零件分割/语义分割三任务 SOTA，快 Subvolume 141 倍，Stanford，CVPR 2017
 - [Perceiver](30-papers/perceiver-2103.03206.md): cross-attention bottleneck 把超高维输入（50k 像素/音频/点云）压入小 latent 数组，无领域专用结构处理任意模态，ImageNet/AudioSet/ModelNet40 全覆盖，ICML 2021
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
 - [Data Mixing Laws](30-papers/data-mixing-laws-2403.16952.md): 用指数函数拟合数据配比与验证损失的定量关系，嵌套 Scaling Laws 预测 1B 模型最优配比，ICLR 2025
