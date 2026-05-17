@@ -29,22 +29,59 @@ UniAD 的核心论点：**系统设计应该以规划为导向**——感知和�
 
 ## 方法：五个 Transformer Decoder 模块串联
 
-### 整体架构（Figure 2）
+### 架构总览
 
-```
-多视角摄像头图像
-      ↓ BEVFormer（BEV encoder）
-  BEV 特征 B [H×W×C]
-      ↓
-  TrackFormer ──→ 跟踪 query Q_A（每个 agent 一个 query）
-      ↓                    ↓
-  MapFormer  ──→ 地图 query Q_M（每个地图元素一个 query）
-      ↓          ↓
-  MotionFormer（Q_A + Q_M → 运动预测，多模态轨迹）
-      ↓
-  OccFormer（运动 query + BEV → 未来占据预测）
-      ↓
-  Planner（ego-vehicle query → 规划轨迹 + 碰撞优化）
+```mermaid
+flowchart TD
+    subgraph INPUT["输入"]
+        CAM["6 路环视摄像头图像\n各 [3, H=900, W=1600]"]
+        CMD["行驶指令\n直行 / 左转 / 右转"]
+    end
+
+    subgraph ENC["BEVFormer Encoder"]
+        BEV["BEV 特征 B\n[H=200, W=200, C=256]"]
+    end
+
+    subgraph TRACK["TrackFormer（检测 + 跟踪）"]
+        QA["agent query Q_A\n[N_a, D=256]"]
+        EGO["ego-vehicle query\n[1, D]"]
+    end
+
+    subgraph MAP["MapFormer（在线地图）"]
+        QM["地图 query Q_M\n[N_m, D]"]
+    end
+
+    subgraph MOTION["MotionFormer（联合运动预测）"]
+        TRAJ["K=6 条多模态轨迹\n[N_a, K, T=6s, 2]"]
+        EGO2["ego query（已编码周围交互）"]
+    end
+
+    subgraph OCC["OccFormer（未来占据预测）"]
+        OCCMAP["占据预测 Ô\n[T_o, H, W]（各时间步 BEV 占据图）"]
+    end
+
+    subgraph PLAN["Planner（ego 规划）"]
+        INIT["初始规划轨迹 τ̂\n[T_p=6s, 2]"]
+        OPT["Newton 优化\n最小化 dist(τ,τ̂) + collision(τ,Ô)"]
+        OUT["最终规划轨迹 τ*\n[T_p, 2]"]
+    end
+
+    CAM --> BEV
+    BEV --> QA
+    BEV --> QM
+    QA --> TRAJ
+    QM --> TRAJ
+    BEV --> TRAJ
+    TRAJ --> EGO2
+    EGO --> EGO2
+    EGO2 --> OCCMAP
+    BEV --> OCCMAP
+    EGO2 --> INIT
+    CMD --> INIT
+    BEV --> INIT
+    OCCMAP --> OPT
+    INIT --> OPT
+    OPT --> OUT
 ```
 
 所有模块都是 Transformer decoder 结构，以 query 作为接口相互传递信息——上游模块的 query 输出直接作为下游模块的 key/value 输入，不需要显式的后处理或格式转换。
@@ -93,6 +130,42 @@ OccFormer 预测未来多时间步的 BEV 占据图（每个格子是否被占�
 2. **第二阶段**：端到端训练所有模块，20 个 epoch
 
 实验表明两阶段训练比直接端到端训练更稳定。
+
+**训练细节**（论文 Section 3、Appendix）：
+
+| 配置项 | 值 |
+|--------|-----|
+| 优化器 | AdamW |
+| 学习率 | 2e-4，余弦衰减 |
+| Batch size | 8（每卡 1，8 卡 A100）|
+| 第一阶段 epoch | 6 |
+| 第二阶段 epoch | 20 |
+| BEV 分辨率 | 200×200，每格 0.5m，覆盖前后各 50m、左右各 50m |
+| 输入帧 | 当前帧 + 过去 3 帧（4 帧历史，时序 BEVFormer）|
+| 数据集 | nuScenes train split（700 个场景，约 28K 帧）|
+| 图像尺寸 | 900×1600，6 路环视摄像头 |
+
+---
+
+## 训练 vs 推理差异
+
+| 方面 | 训练 | 推理 |
+|------|------|------|
+| **输入** | nuScenes 标注帧，含 GT 标注（跟踪 ID、地图、轨迹）用于各任务 loss | 6 路摄像头图像 + 行驶指令（直行/左转/右转） |
+| **输出使用** | 所有中间 query 和预测都参与 loss 计算 | 只输出最终规划轨迹 τ*（T_p 步的 (x,y) 序列）|
+| **GT 指导** | TrackFormer 用 GT 跟踪 ID 做匹配（Hungarian algorithm）| 无 GT，检测和跟踪完全靠模型自身 |
+| **轨迹平滑** | MotionFormer 训练时对 GT 轨迹做非线性平滑，约束运动学合理性 | 输出的预测轨迹直接用，不另做平滑 |
+| **Planner 优化** | 规划 loss = L2（模仿专家轨迹）+ 占据约束 | 推理时额外做 Newton 优化（基于 OccFormer 输出的 Ô）进一步避碰 |
+| **仅训练时的模块** | 各任务独立 loss head（分类/回归）| loss head 不运行，只走前向 |
+
+**推理输入**：
+- 6 路摄像头图像：`[6, 3, 900, 1600]`（RGB）
+- 行驶指令：`{0: 直行, 1: 左转, 2: 右转}`（高层导航指令）
+- 历史 BEV 特征（时序 BEVFormer 需要过去 3 帧的 query，部署时需要维护）
+
+**推理输出**：
+- 规划轨迹：`[T_p=6, 2]`，6 秒内每秒一个 (x, y) 坐标（以自车当前位置为原点）
+- 中间输出（可选用于可视化/调试）：跟踪结果、地图预测、agent 轨迹预测、占据图
 
 ---
 
@@ -174,6 +247,78 @@ OccFormer 预测未来多时间步的 BEV 占据图（每个格子是否被占�
 - [nuScenes](./nuscenes-1903.11027.md)：UniAD 所有实验的数据集
 - [nuPlan](./nuplan-2106.11810.md)：规划闭环 benchmark，UniAD 的后续工作在 nuPlan 上有更多评测
 - [PNC 模型架构](../00-overview/pnc-model-architecture.md)：PNC 是模块化设计（Encoder+多Decoder），UniAD 是端到端一体化；两者代表不同的系统设计哲学
+
+## 附录：输入特征详解
+
+### 坐标系约定
+
+UniAD 使用 **BEV（Bird's Eye View）坐标系**：以自车当前位置为原点，x 轴朝前，y 轴朝左。BEV 网格 200×200，每格 0.5m，覆盖自车前后各 50m、左右各 50m 的范围。
+
+规划输出的轨迹坐标也在此坐标系下（x=前向偏移米数，y=横向偏移米数）。
+
+---
+
+### 摄像头图像 `[6, 3, H, W]`
+
+nuScenes 标配 6 路环视摄像头，覆盖 360°：
+
+| 摄像头 | 朝向 | 水平 FOV | 备注 |
+|--------|------|---------|------|
+| CAM_FRONT | 正前方 | ~70° | 主要行驶方向 |
+| CAM_FRONT_LEFT | 左前 45° | ~70° | 变道/路口检测 |
+| CAM_FRONT_RIGHT | 右前 45° | ~70° | 变道/路口检测 |
+| CAM_BACK | 正后方 | ~110° | 后方来车 |
+| CAM_BACK_LEFT | 左后 ~135° | ~70° | 盲区覆盖 |
+| CAM_BACK_RIGHT | 右后 ~135° | ~70° | 盲区覆盖 |
+
+每张图像分辨率 900×1600（H×W），RGB 3 通道，经 BEVFormer 投影到统一 BEV 特征空间。
+
+---
+
+### BEV 特征 `B: [200, 200, 256]`
+
+由 BEVFormer 从 6 路图像中生成的统一鸟瞰图特征。每个 BEV 格子 (i, j) 对应地面上 0.5m×0.5m 的区域，特征维度 C=256。
+
+BEVFormer 用可变形 cross-attention（Deformable Attention）把透视图像投影到 BEV 平面，结合时序历史帧（4 帧）增强时序一致性。
+
+---
+
+### 行驶指令
+
+高层导航指令，来自导航系统或人工设定：
+
+| 值 | 含义 | 使用时机 |
+|----|------|---------|
+| 0 | 直行（Go straight） | 路口直行、正常行驶 |
+| 1 | 左转（Turn left） | 路口左转 |
+| 2 | 右转（Turn right） | 路口右转 |
+
+作为 embedding 输入 Planner，让规划知道"在路口该往哪走"。没有这个指令，Planner 在路口会面临歧义。
+
+---
+
+### Agent Query `Q_A: [N_a, 256]`
+
+TrackFormer 输出，每个检测到的 agent（车辆、行人、自行车）一个 D=256 维向量。
+
+- `N_a`：场景中检测到的 agent 数量，nuScenes 中通常 10-30 个
+- 每个 query 编码了该 agent 的位置、速度、类型、跨帧历史（通过时序 track query 维持）
+- ego-vehicle 有独立的 query，也是 `[1, 256]`，和其他 agent query 格式相同
+
+---
+
+### 地图 Query `Q_M: [N_m, 256]`
+
+MapFormer 输出，每个语义地图元素一个 query：
+
+| 地图元素类型 | 典型数量 | 含义 |
+|------------|---------|------|
+| 车道中心线 | 5-15 条 | 可行驶路径 |
+| 路口边界 | 0-5 个 | 路口区域 |
+| 行人过街 | 0-3 个 | 斑马线 |
+
+- `N_m` 通常 10-30，取决于场景复杂度
+- 不依赖 HD map，完全由 MapFormer 从图像实时预测
 
 ## 值得看的部分 / 相关资料
 

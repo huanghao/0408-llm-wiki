@@ -131,6 +131,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [MTR: Motion Transformer](30-papers/mtr-2209.13508.md): Motion Query Pair（静态意图锚点+动态搜索查询）驱动迭代轨迹精化，WOMD 边际/联合预测双榜第一，Max Planck Institute，NeurIPS 2022
 - [MTR++: Multi-Agent Motion Prediction](30-papers/mtrpp-2306.17770.md): Symmetric Context Encoder（共享场景编码）+ Mutually-Guided Intention Querying（跨 agent 意图交流），Waymo Challenge 2022/2023 双冠，TPAMI 2024
 - [MotionDiffuser](30-papers/motiondiffuser-2306.03083.md): 扩散模型学习多 agent 轨迹联合分布，置换不变 denoiser + PCA 压缩 + 推理时可微约束采样（attractor/repeller），WOMD SOTA，CVPR 2023 Highlight
+- [GameFormer: 预测+规划联合博弈建模](30-papers/gameformer-2303.05760.md): level-k 博弈框架迭代精化预测与规划——每层考虑"他车如何回应上一层预测"，同时输出自车规划+他车预测，WOMD 联合预测+nuPlan 规划双覆盖，NTU，ICCV 2023
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用
 - [Instruction Tuning with GPT-4](30-papers/instruction-tuning-with-gpt-4-2304.03277.md): 首次系统验证用 GPT-4 生成指令数据和比较数据来蒸馏开源 assistant

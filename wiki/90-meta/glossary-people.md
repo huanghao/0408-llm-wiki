@@ -83,6 +83,8 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 |---|---|---|---|---|
 | **Shaoshuai Shi** | Max Planck Institute for Informatics | 博士 MPI，~30 岁 | 点云 3D 检测，运动预测 | PointRCNN、PV-RCNN（3D 检测），MTR/MTR++（Waymo Challenge 2022/2023 冠军）|
 | **Bernt Schiele** | Max Planck Institute for Informatics | 计算机视觉资深教授，~57 岁 | 视觉理解，行人检测，场景理解 | MTR/MTR++ 通讯作者，多个 CVPR/ICCV 最佳论文 |
+| **Zhiyu Huang** | Nanyang Technological University | 博士 NTU，~28 岁 | 运动预测，交互规划，博弈论 | GameFormer 第一作者（ICCV 2023），level-k 博弈预测+规划 |
+| **Chen Lv** | Nanyang Technological University | 副教授 NTU，~40 岁 | 自动驾驶，预测规划，强化学习 | GameFormer 通讯作者，NTU 自动驾驶实验室负责人 |
 
 ---
 
