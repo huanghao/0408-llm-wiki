@@ -22,6 +22,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [LLM Learning Roadmap (2026-04-10)](10-roadmaps/llm-learning-roadmap-20260410.md): main post-2024 reading path focused on open models, reasoning, alignment, long context, and agent evaluation.
 - [LLM 数据工程路线图](10-roadmaps/data-engineering-llm.md): 过滤、去重、数据混合配方、合成数据的学习路径
 - [AV 数据工程路线图](10-roadmaps/data-engineering-av.md): 自动驾驶数据飞轮、标注体系、传感器融合的学习路径
+- [PNC 规划模型学习路线图](10-roadmaps/pnc-model-learning-roadmap.md): 理解 PNC SharedEncoder+GeneralDecoder 架构的 13 篇论文，按依赖关系排列（Transformer→DETR→Wayformer→TNT→MTR→HiVT→BERT→DPO→Scaling Laws）
 
 ## Concepts
 
