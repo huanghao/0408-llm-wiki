@@ -118,6 +118,34 @@ Working directory: `20250421-llama3-exp/`
 - Updated `wiki/20-concepts/instruction-tuning.md` to include LIMA in the data-quality/data-quantity lineage.
 - Updated `wiki/index.md` with the new paper entry.
 
+## [2026-05-20] ingest | MapTR: Online Vectorized HD Map Construction (arXiv 2208.14437)
+
+- 下载 `raw/inbox/2208.14437.pdf`。
+- 新增 `wiki/30-papers/maptr-2208.14437.md`：等价置换建模（permutation-equivalent modeling）+ 层次化 query decoder + 三项 loss（cls/p2p/dir）；nuScenes 45.9 mAP @25.1 FPS（nano）/ 58.7 mAP（tiny），ICLR 2023 奠基之作。
+- 更新 `wiki/index.md`，`wiki/90-meta/glossary-names.md`（MapTR/HDMapNet/VectorMapNet/GKT/VAD），`wiki/90-meta/glossary-people.md`（Xinggang Wang, Bencheng Liao）。
+
+## [2026-05-20] update | 无图规划（HD Map Free）概览 + nuScenes 场景结构补充
+
+- 新增 `wiki/00-overview/av-mapless-planning.md`：在线建图替代 HD Map 的技术路线，nuScenes/NAVSIM/Bench2Drive benchmark 对比，MapTR→VAD→SparseDrive 模型谱系，nuScenes 开环指标失真问题，工业落地现状，推荐阅读路线。
+- 更新 `wiki/00-overview/av-open-ecosystem.md`：规划 leaderboard 表中加入 Bench2Drive、nuScenes E2E 规划条目，并注明 BEV-Planner 指标失真警告。
+- 更新 `wiki/30-papers/nuscenes-1903.11027.md`：新增「场景的组织方式与区分维度」一节，覆盖四层数据结构、4 个地图区域、scene.description 自由文本机制、agent 级运动模式分类、和 nuPlan 场景体系的对比。
+- 更新 `wiki/index.md`。
+
+## [2026-05-19] ingest | PLUTO: Pushing the Limit of Imitation Learning-based Planning (arXiv 2404.14327)
+
+- Added `wiki/30-papers/pluto-2404.14327.md`：横纵解耦 Transformer + CIL + 可微辅助 loss，首个在 nuPlan Val14 超越 PDM-Closed 的学习方法，HKUST 2024。
+- Updated `wiki/index.md`，`wiki/90-meta/glossary-names.md`（PLUTO 词源），`wiki/90-meta/glossary-people.md`（Jie Cheng, Qifeng Chen）。
+
+## [2026-05-19] ingest | 3D Occupancy Prediction 四篇核心论文
+
+- 下载并阅读 4 篇论文 PDF（MonoScene/TPVFormer/VoxFormer/Occ3D）。
+- 注意：arxiv 2302.11655 实际是 K-12 cybersecurity 论文，正确 Occ3D ID 为 2304.14365，重新下载。
+- 新增 `wiki/30-papers/monoscene-2112.00726.md`：首个单目 RGB SSC，FLoSP+3D CRP+新 loss，Inria，CVPR 2022。
+- 新增 `wiki/30-papers/tpvformer-2302.07817.md`：TPV 三视图表示，camera-only occupancy 经典 baseline，Tsinghua，CVPR 2023。
+- 新增 `wiki/30-papers/voxformer-2302.12251.md`：两阶段稀疏 voxel query + MAE-like completion，LiDAR-assisted SSC 代表，NYU/NVIDIA，CVPR 2023。
+- 新增 `wiki/30-papers/occ3d-2304.14365.md`：建立 Occ3D-nuScenes/Waymo benchmark + 自动标注 pipeline，NeurIPS 2023，现行最常用 occupancy 评测标准。
+- 更新 `wiki/index.md`，`wiki/90-meta/glossary-names.md`（TPVFormer/VoxFormer/MonoScene/Occ3D/CTF-Occ/BEV 词源），`wiki/90-meta/glossary-datasets.md`（SemanticKITTI/Occ3D-nuScenes/Occ3D-Waymo）。
+
 ## [2026-05-03] note | Add t-SNE concept note from MagPie comments
 
 - Added `wiki/20-concepts/tsne-dimensionality-reduction.md`.

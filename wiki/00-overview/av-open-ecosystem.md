@@ -57,9 +57,13 @@
 
 | Leaderboard | 数据集 | 主指标 | 备注 |
 |------------|--------|--------|------|
-| **nuPlan** | nuPlan | 综合分数 | reactive 仿真，计算代价高 |
-| **NAVSIM** | nuPlan（子集） | PDM-Score | 非反应式，低成本，2024 年兴起 |
+| **nuPlan** | nuPlan | 综合分数 | reactive 仿真，计算代价高；需要 HD Map |
+| **NAVSIM** | nuScenes 子集 | PDM-Score | 非反应式，低成本，2024 年兴起；无图可用 |
+| **nuScenes E2E 规划** | nuScenes | L2 + collision rate | 开环评测；**指标失真**（见注）|
+| **Bench2Drive** | CARLA 仿真 | 路线完成率+碰撞 | 端到端闭环，无图，arXiv 2604.01259 |
 | **CARLA Leaderboard** | 纯仿真 | 路线完成率+碰撞 | 端到端系统评测 |
+
+⚠️ **nuScenes E2E 规划指标说明**：BEV-Planner（2024，arXiv 2406.02445）证明 nuScenes 开环规划的 L2 + collision 指标严重失真——匀速直行基线可接近 SOTA，原因是数据集中直道占比过高。2022-2023 年在此榜上的排名不反映真实规划能力。NAVSIM 的 PDM-Score 是目前更可靠的替代。
 
 ### 年度竞赛（附奖金）
 

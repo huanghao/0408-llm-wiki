@@ -60,6 +60,9 @@ wiki 里出现的数据集，按用途分类。"规模"以 token 数计（B=十�
 | 名称 | 来源机构 | 规模 | 特点 | 被哪些工作用 |
 |---|---|---|---|---|
 | **WOMD（Waymo Open Motion Dataset）** | Waymo | ~100K 场景，每个 20 秒 | 大规模运动预测数据集，包含 HD map + 所有参与者完整状态序列（位置/速度/朝向/类型），聚焦于交通流运动预测，非感知或规划 | TrafficGen（训练数据），ScenarioNet（场景来源）|
+| **SemanticKITTI** | KIT（Behley et al. ICCV 2019）| 22 outdoor driving sequences，LiDAR 256×256×32 (0.2m voxel) | 自动驾驶室外 LiDAR 语义场景数据集，21 类（19 语义+1 free+1 unknown），常用于 SSC（Semantic Scene Completion）任务的训练和评测 | MonoScene, VoxFormer, TPVFormer |
+| **Occ3D-nuScenes** | Tsinghua MARS Lab（NeurIPS 2023）| 1000 场景，40K 帧，6 路环视相机 | 基于 nuScenes 建立的 3D occupancy 预测 benchmark；三步自动标注 pipeline；16 类 + GO；voxel size 0.4m；带 LiDAR 和 camera visibility mask | TPVFormer, BEVFormer, CTF-Occ 等；现行最常用的 occupancy 评测 benchmark |
+| **Occ3D-Waymo** | Tsinghua MARS Lab（NeurIPS 2023）| 1000 sequences，200K 帧，5 路相机 | 基于 Waymo Open Dataset 建立；14 类 + GO；voxel size 0.05m（迄今分辨率最高）；范围 [-80m, 80m] | CTF-Occ, BEVFormer-Fusion 等 |
 
 ---
 

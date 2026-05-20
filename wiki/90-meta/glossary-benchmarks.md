@@ -128,5 +128,9 @@ wiki 里出现的评测集，按能力分类。"污染风险"指数据集测试�
 | **Argoverse 1 Motion** | Argoverse 1 | 单 agent 运动预测 | minFDE | 已基本停止新提交 |
 | **Argoverse 2 Motion** | Argoverse 2 | 单 agent 运动预测 | Brier-minFDE | 持续开放，同时考核距离和置信度 |
 | **nuScenes Detection** | nuScenes | 3D 目标检测 | NDS（综合分）| BEV 感知方法的标准基准 |
+| **nuScenes LiDAR Seg** | Panoptic nuScenes | LiDAR 点云语义分割 | mIoU | TPVFormer/Cylinder3D 等的主要评测；标注 2Hz，32 线 LiDAR，16+1 类 |
+| **SemanticKITTI SSC** | SemanticKITTI | 3D 语义场景完成（Semantic Scene Completion）| SC IoU + SSC mIoU | outdoor 驾驶 LiDAR，256×256×32 voxel，0.2m；MonoScene/VoxFormer/TPVFormer 的主要评测；不同于 LiDAR Seg，需补全遮挡区域 |
+| **Occ3D-nuScenes** | Occ3D（Tsinghua MARS Lab，NeurIPS 2023）| 3D occupancy prediction（环视相机）| mIoU（observed voxel only）| 现行最常用的 camera-only occupancy benchmark；40K 帧，16+GO 类，voxel 0.4m；evaluation 只在 visibility mask 可见 voxel 上进行 |
+| **Occ3D-Waymo** | Occ3D（Tsinghua MARS Lab，NeurIPS 2023）| 3D occupancy prediction（高分辨率）| mIoU | 200K 帧，14+GO 类，voxel 0.05m（最高分辨率）；规模更大但使用频率低于 nuScenes 版本 |
 | **nuPlan Closed-Loop** | nuPlan | 规划（闭环仿真）| 综合分（碰撞/完成率/舒适度）| reactive 仿真，计算代价高 |
 | **NAVSIM** | nuPlan（子集）| 端到端规划（非反应式仿真）| PDM-Score | 轻量，CVPR 2024 竞赛 143 支队伍，快速成为端到端主流评测 |

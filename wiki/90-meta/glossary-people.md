@@ -85,6 +85,8 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 | **Bernt Schiele** | Max Planck Institute for Informatics | 计算机视觉资深教授，~57 岁 | 视觉理解，行人检测，场景理解 | MTR/MTR++ 通讯作者，多个 CVPR/ICCV 最佳论文 |
 | **Zhiyu Huang** | Nanyang Technological University | 博士 NTU，~28 岁 | 运动预测，交互规划，博弈论 | GameFormer 第一作者（ICCV 2023），level-k 博弈预测+规划 |
 | **Chen Lv** | Nanyang Technological University | 副教授 NTU，~40 岁 | 自动驾驶，预测规划，强化学习 | GameFormer 通讯作者，NTU 自动驾驶实验室负责人 |
+| **Jie Cheng** | HKUST | 博士生，~26 岁 | 自动驾驶规划，模仿学习 | PLUTO 第一作者（arXiv 2024），首个在 nuPlan 超越规则规划器的 IL 方法 |
+| **Qifeng Chen** | HKUST（助理教授）| ECE + CSE 双聘，~38 岁 | 计算机视觉，自动驾驶，图像生成 | PLUTO 通讯作者，HKUST 视觉感知实验室负责人 |
 
 ---
 
@@ -94,6 +96,16 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 |---|---|---|---|---|
 | **Charles R. Qi** | Waymo（前 Stanford）| Stanford PhD（Guibas 组），~33 岁 | 点云深度学习，3D 目标检测 | PointNet（CVPR 2017）、PointNet++（NeurIPS 2017），Waymo 3D 感知核心成员 |
 | **Leonidas J. Guibas** | Stanford | 几何算法先驱，斯坦福教授，~75 岁 | 计算几何，3D 形状分析，点云 | PointNet 通讯作者，Shape2Vec，多个 3D 视觉基础工作 |
+| **Jiwen Lu** | Tsinghua University（清华自动化系）| 教授，~43 岁 | 视频理解，3D 感知，驾驶感知 | TPVFormer 通讯作者，BeVerse，多个清华驾驶感知系列论文的通讯作者 |
+| **Yuanhui Huang** | Tsinghua University | 博士生，~26 岁 | 3D occupancy prediction，视觉驾驶感知 | TPVFormer 第一作者（等同贡献）|
+| **Wenzhao Zheng** | Tsinghua University | 博士生，~26 岁 | 3D 感知，occupancy prediction | TPVFormer 第一作者（等同贡献）|
+| **Hang Zhao** | Tsinghua MARS Lab | 助理教授，~35 岁 | 自动驾驶，3D 感知，机器学习 | Occ3D 通讯作者，MARS Lab（Machine Autonomy and Robotic Systems）负责人 |
+| **Yiming Li** | NYU | 博士生（Feng 组），~27 岁 | 3D scene completion，occupancy | VoxFormer 第一作者（CVPR 2023）|
+| **Zhiding Yu** | NVIDIA Research | 研究员，~38 岁 | 3D 感知，域适应，生成模型 | VoxFormer 通讯作者，FreeSolo，NVIDIA 3D 感知核心研究员 |
+| **Anima Anandkumar** | Caltech / NVIDIA | Caltech 教授 + NVIDIA 研究总监，~45 岁 | 张量方法，ML 理论，3D 感知 | VoxFormer 联合作者，TensorNet，NVIDIA Research 方向性领军人物 |
+| **Raoul de Charette** | Inria | 研究员，~38 岁 | 单目 3D 感知，SSC | MonoScene 通讯作者，CamConvs，Inria 驾驶视觉组 |
+| **Xinggang Wang** | HKUST（EIC 学院副教授）| HKUST，~38 岁 | 目标检测，BEV 感知，在线建图 | MapTR 通讯作者，BEVFormer 贡献者，HKUST 视觉与机器学习实验室 |
+| **Bencheng Liao** | HKUST / Horizon Robotics | 博士生，~27 岁 | 在线 HD 地图构建，BEV 感知 | MapTR 第一作者（ICLR 2023，等价置换建图），MapTRv2 |
 
 ---
 

@@ -157,6 +157,97 @@ Average Multi-Object Tracking Accuracy，在多个召回阈值下平均 MOTAR（
 
 nuScenes 的 LiDAR 线数（32 线）低于 Waymo（64 线），是有意为之——模拟量产车上成本可接受的传感器配置，而不是研究用的高端设备。
 
+## 场景的组织方式与区分维度
+
+### 数据结构层次
+
+nuScenes 的数据组织是四层结构：
+
+```
+Log（原始行程记录）
+  └── Scene（20 秒片段，含 description）
+        └── Sample（关键帧，2Hz，即 40 帧/场景）
+              └── SampleData（某一传感器在该时刻的原始数据）
+```
+
+每个层级的关键字段：
+
+| 层级 | 关键字段 | 说明 |
+|------|---------|------|
+| **Log** | `location` | 4 个地图区域之一（见下）|
+| **Log** | `date_captured` | 采集日期时间，可推算昼夜 |
+| **Scene** | `name` | `"scene-0001"` 等序号 |
+| **Scene** | `description` | 标注员手写描述，如 `"Traffic light, car, bicycle"` |
+| **Scene** | `nbr_samples` | 关键帧数（通常 40）|
+| **Sample** | `timestamp` | 微秒级时间戳 |
+
+### 地理位置：4 个地图区域
+
+nuScenes 所有场景分布在固定的 4 个地图区域，这是唯一的**结构化位置标签**：
+
+| 地图区域 | 城市 | 特点 |
+|---------|------|------|
+| `boston-seaport` | 波士顿 | 港口区域，复杂路口，有雪天场景 |
+| `singapore-onenorth` | 新加坡 | 科技园区，密集行人，左驾 |
+| `singapore-hollandvillage` | 新加坡 | 居住区，混合交通 |
+| `singapore-queenstown` | 新加坡 | 城市住宅区 |
+
+train/val/test 的划分在地图区域之间有一定分离，减少地图过拟合。
+
+### scene.description：自由文本，无正式分类体系
+
+nuScenes **没有正式的场景类型标签体系**（如 nuPlan 的 70+ 场景类型）。每个场景的类型信息靠 `scene.description` 这个自由文本字段，由标注员手写，例如：
+
+```
+"Heavy rain, slippery road, vehicle ahead stopping"
+"Construction zone, traffic cones, low speed"
+"Roundabout, multiple cyclists"
+"Night, traffic light intersection, turning left"
+```
+
+这是 nuScenes 和 nuPlan 的一个根本差异——nuScenes 是感知基准，不需要精细场景分类；nuPlan 是规划基准，场景类型直接影响评分权重。
+
+### 场景覆盖范围（从 description 统计）
+
+论文报告的场景类型覆盖（基于 description 文本统计）：
+
+| 场景类型 | 覆盖情况 |
+|---------|---------|
+| 交叉路口（Intersection） | 大量覆盖，含信号灯/无信号灯 |
+| 环形路（Roundabout） | 有但较少 |
+| 停车场 / 泊车 | 有 |
+| 雨天 / 湿路 | 有（波士顿雪天较多）|
+| 夜间 | 有（通过时间戳区分）|
+| 施工区域 | 有 |
+| 密集行人 | 有（新加坡场景为主）|
+| 高速公路 | **基本没有**，主要是城市低速场景 |
+
+### 运动预测任务中的 agent 级分类
+
+nuScenes 预测挑战赛为每个需要预测的 agent 定义了 **8 类运动模式**标签（不是场景级，而是 agent 级）：
+
+| 类别 | 含义 |
+|------|------|
+| `stationary` | 静止不动 |
+| `straight` | 匀速直行 |
+| `straight_right` | 直行后右转 |
+| `straight_left` | 直行后左转 |
+| `right` | 向右转 |
+| `left` | 向左转 |
+| `right-u-turn` | 右 U 形掉头 |
+| `left-u-turn` | 左 U 形掉头 |
+
+这是 prediction 任务的标签，不属于基础数据集 schema。
+
+### 和 nuPlan 场景分类体系的对比
+
+| | nuScenes | nuPlan |
+|---|---|---|
+| 场景类型标签 | 自由文本 description | 70+ 结构化类型（如 `starting_unprotected_cross_turn`）|
+| 标签粒度 | 场景级（20 秒整体描述） | 片段级（精确到触发场景的时刻）|
+| 标注方式 | 人工手写 | 程序化从 log 中检测 |
+| 用途 | 感知评测，不按场景类型拆分指标 | 规划评测，按场景类型分别打分 |
+
 ## 关键设计决策
 
 **1. 两座城市 × 多种天气**

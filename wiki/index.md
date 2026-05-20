@@ -15,6 +15,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [SOTIF：预期功能安全（ISO 21448）](00-overview/sotif-iso-21448.md): 覆盖 ISO 26262 空白——ML 算法设计局限导致的功能不足（FI），四象限场景模型，16 类 OI 分类，触发条件分析，FI 缓解架构 Daruma
 - [PNC Model Architecture](00-overview/pnc-model-architecture.md): PNC 神经网络模型的架构、规模与训练数据
 - [Tesla Data Engine](00-overview/tesla-data-engine.md): Karpathy 在 Tesla AI Day 演讲中描述的数据飞轮范式
+- [无图规划（HD Map Free）](00-overview/av-mapless-planning.md): 在线建图替代 HD Map 的技术路线，MapTR→VAD→SparseDrive 谱系，nuScenes/NAVSIM/Bench2Drive benchmark 对比，工业落地现状
 
 ## Roadmaps
 
@@ -121,6 +122,11 @@ This is the content-oriented entry point for the LLM wiki.
 - [Axial-DeepLab](30-papers/axial-deeplab-2003.07853.md): 2D self-attention 分解为两个 1D axial-attention，position-sensitive 相对位置编码，全景分割 COCO +2.8% PQ，参数量少 3.8×，ECCV 2020
 - [NAVSIM](30-papers/navsim-2406.15349.md): 非反应式仿真评测框架，用真实数据替代仿真器，PDM-Score 综合指标，CVPR 2024 竞赛 143 支队伍，NeurIPS 2024
 - [UniAD](30-papers/uniad-2212.10156.md): 规划导向端到端 AD，五模块 query 接口串联（跟踪/建图/运动预测/占据预测/规划），nuScenes 全面 SOTA，CVPR 2023 Best Paper
+- [MapTR: Online Vectorized HD Map Construction](30-papers/maptr-2208.14437.md): 等价置换建模消除车道线点集排列歧义，层次化 query decoder，nuScenes 45.9 mAP@25.1 FPS（nano），在线 HD Map 构建奠基之作，HKUST，ICLR 2023
+- [MonoScene: Monocular 3D Semantic Scene Completion](30-papers/monoscene-2112.00726.md): 首个只用单目 RGB 图像完成 3D SSC，FLoSP 沿光线反投影 2D 特征 + 3D CRP 上下文先验 + Scene-Class Affinity Loss，camera-only occupancy 起点，Inria，CVPR 2022
+- [TPVFormer: Tri-Perspective View for Vision-Based 3D Semantic Occupancy Prediction](30-papers/tpvformer-2302.07817.md): 三个互相垂直 TPV 平面替代 voxel，O(HW+DH+WD) 复杂度，ICA+CVHA transformer 从多视角图像提升特征，camera-only occupancy 经典 baseline，Tsinghua，CVPR 2023
+- [VoxFormer: Sparse Voxel Transformer for Camera-based 3D Semantic Scene Completion](30-papers/voxformer-2302.12251.md): 两阶段——Stage-1 深度估计驱动稀疏 voxel query proposal，Stage-2 MAE-like 稀疏→稠密 completion，SemanticKITTI IoU+20%/mIoU+18%，NYU/NVIDIA，CVPR 2023
+- [Occ3D: A Large-Scale 3D Occupancy Prediction Benchmark](30-papers/occ3d-2304.14365.md): 三步自动标注 pipeline（致密化+遮挡推理+图像精化），Occ3D-nuScenes/Waymo benchmark，visibility mask 设计，CTF-Occ 模型，现行最常用 occupancy 评测标准，Tsinghua，NeurIPS 2023
 - [MetaDrive](30-papers/metadrive-2109.12674.md): 可组合自动驾驶 RL 模拟平台，BIG 算法程序化生成 + Waymo/Argoverse 真实数据导入，300 FPS 轻量运行，ScenarioNet 直接前身，TPAMI 2022
 - [ScenarioNet](30-papers/scenarionet-2306.12241.md): 统一场景描述格式整合 Waymo/nuScenes/nuPlan/L5/Argoverse，MetaDrive 模拟器支持闭环 RL/IL 和 AD stack 测试，NeurIPS 2023
 - [TrafficGen](30-papers/trafficgen-2210.06609.md): 数据驱动交通场景生成，encoder-decoder + 自回归从 WOMD 学习车辆放置和长轨迹，生成数据改善 RL 安全性，ScenarioNet 场景嵌入工具，ICRA 2023
@@ -132,6 +138,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [MTR++: Multi-Agent Motion Prediction](30-papers/mtrpp-2306.17770.md): Symmetric Context Encoder（共享场景编码）+ Mutually-Guided Intention Querying（跨 agent 意图交流），Waymo Challenge 2022/2023 双冠，TPAMI 2024
 - [MotionDiffuser](30-papers/motiondiffuser-2306.03083.md): 扩散模型学习多 agent 轨迹联合分布，置换不变 denoiser + PCA 压缩 + 推理时可微约束采样（attractor/repeller），WOMD SOTA，CVPR 2023 Highlight
 - [GameFormer: 预测+规划联合博弈建模](30-papers/gameformer-2303.05760.md): level-k 博弈框架迭代精化预测与规划——每层考虑"他车如何回应上一层预测"，同时输出自车规划+他车预测，WOMD 联合预测+nuPlan 规划双覆盖，NTU，ICCV 2023
+- [PLUTO: Pushing the Limit of Imitation Learning-based Planning](30-papers/pluto-2404.14327.md): 横纵解耦 Transformer + 对比模仿学习（CIL）+ 可微辅助 loss，首个在 nuPlan Val14 超越最强规则规划器（93.21 vs PDM-Closed 93.08），HKUST，arXiv 2024
 - [DCLM](30-papers/dclm-2406.11794.md): 固定模型只改数据，系统对比数据过滤策略的影响
 - [Gopher](30-papers/gopher-2112.11446.md): DeepMind 280B 模型，重复 n-gram 过滤方法被 Llama 3 引用
 - [Instruction Tuning with GPT-4](30-papers/instruction-tuning-with-gpt-4-2304.03277.md): 首次系统验证用 GPT-4 生成指令数据和比较数据来蒸馏开源 assistant
@@ -174,4 +181,5 @@ This is the content-oriented entry point for the LLM wiki.
 - [Lint Report 2026-04-28](90-meta/lint-20260428.md): wiki health check findings and action items.
 - [Lint Report 2026-05-03](90-meta/lint-20260503.md): wiki health check findings and action items.
 - [Lint Report 2026-05-15](90-meta/lint-20260515.md): 105 files, 0 orphans, 0 dead links; 2 papers missing 现状与影响, 7 cross-link gaps.
+- [Lint Report 2026-05-20](90-meta/lint-20260520.md): ~112 files, 0 orphans, 0 missing 现状与影响; 7 files missing from index (fixed), 4 AD benchmark glossary gaps (fixed).
 - [Log](log.md): chronological record of ingests and updates.
