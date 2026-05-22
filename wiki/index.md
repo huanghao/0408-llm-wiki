@@ -123,7 +123,11 @@ This is the content-oriented entry point for the LLM wiki.
 - [Axial-DeepLab](30-papers/axial-deeplab-2003.07853.md): 2D self-attention 分解为两个 1D axial-attention，position-sensitive 相对位置编码，全景分割 COCO +2.8% PQ，参数量少 3.8×，ECCV 2020
 - [NAVSIM](30-papers/navsim-2406.15349.md): 非反应式仿真评测框架，用真实数据替代仿真器，PDM-Score 综合指标，CVPR 2024 竞赛 143 支队伍，NeurIPS 2024
 - [UniAD](30-papers/uniad-2212.10156.md): 规划导向端到端 AD，五模块 query 接口串联（跟踪/建图/运动预测/占据预测/规划），nuScenes 全面 SOTA，CVPR 2023 Best Paper
+- [BEVFormer: BEV Representation from Multi-Camera Images](30-papers/bevformer-2203.17270.md): 200×200 BEV 查询 + 空间交叉注意力（Pillar投影→多相机采样）+ 时序自注意力（ego-motion对齐历史BEV），nuScenes val NDS 0.517 / test 0.569，camera BEV 感知标准基线，上海 AI Lab，ECCV 2022
 - [MapTR: Online Vectorized HD Map Construction](30-papers/maptr-2208.14437.md): 等价置换建模消除车道线点集排列歧义，层次化 query decoder，nuScenes 45.9 mAP@25.1 FPS（nano），在线 HD Map 构建奠基之作，HKUST，ICLR 2023
+- [Gen-LaneNet: A Generalized and Scalable Approach for 3D Lane Detection](30-papers/gen-lanenet-2003.10656.md): 虚拟 top-view 坐标系 anchor 解决 3D-LaneNet 特征对齐问题 + 两阶段解耦减少 3D 标注需求，发布 Apollo 3D Lane Synthetic（含 Balanced/Rarely Observed/Visual Variants 三划分），F-score +13%（光照泛化），Baidu Apollo，ECCV 2020
+- [BEV-LaneDet: 3D Lane Detection Baseline](30-papers/bev-lanedet-2210.06006.md): Virtual Camera 同质化相机参数 + Key-Points Representation（BEV 网格逐格检测）+ STP 双尺度 MLP 特征投影；OpenLane F-Score 58.4（vs PersFormer 47.8），185 FPS TensorRT，HAOMO.AI，2022
+- [PersFormer + OpenLane: 3D Lane Detection and Benchmark](30-papers/persformer-openlane-2203.11089.md): OpenLane——首个真实世界 3D 车道线 benchmark（200K 帧、14 类、最多 24 条/帧、Waymo 数据）；PersFormer——IPM+Deformable Attn 前视图→BEV 基线，F-Score 50.5，上海 AI Lab，ECCV 2022 Oral
 - [MonoScene: Monocular 3D Semantic Scene Completion](30-papers/monoscene-2112.00726.md): 首个只用单目 RGB 图像完成 3D SSC，FLoSP 沿光线反投影 2D 特征 + 3D CRP 上下文先验 + Scene-Class Affinity Loss，camera-only occupancy 起点，Inria，CVPR 2022
 - [TPVFormer: Tri-Perspective View for Vision-Based 3D Semantic Occupancy Prediction](30-papers/tpvformer-2302.07817.md): 三个互相垂直 TPV 平面替代 voxel，O(HW+DH+WD) 复杂度，ICA+CVHA transformer 从多视角图像提升特征，camera-only occupancy 经典 baseline，Tsinghua，CVPR 2023
 - [VoxFormer: Sparse Voxel Transformer for Camera-based 3D Semantic Scene Completion](30-papers/voxformer-2302.12251.md): 两阶段——Stage-1 深度估计驱动稀疏 voxel query proposal，Stage-2 MAE-like 稀疏→稠密 completion，SemanticKITTI IoU+20%/mIoU+18%，NYU/NVIDIA，CVPR 2023
@@ -134,6 +138,7 @@ This is the content-oriented entry point for the LLM wiki.
 - [Waymo Open Motion Dataset（WOMD）](30-papers/waymo-open-motion-dataset.md): Waymo 运动预测数据集，103K 场景×20s，HD map + agent 状态序列，运动预测 benchmark 标准，无原始传感器数据
 - [Argoverse Motion Forecasting](30-papers/argoverse-motion-forecasting.md): Argo AI 运动预测 benchmark，Brier-minFDE 为主指标（距离+置信度综合），速度自适应 MR 阈值，与 WOMD 互补
 - [VectorNet: Encoding HD Maps and Agent Dynamics](30-papers/vectornet-2005.04259.md): 向量化 HD 地图和轨迹 + 层次化 GNN（polyline 子图 + 全局交互图）+ 图补全辅助任务，参数减少 70% 且 FLOPs 降 200×，Argoverse SOTA，Waymo/Google，CVPR 2020
+- [TNT: Target-driveN Trajectory Prediction](30-papers/tnt-2008.08294.md): 三阶段流水线——目标点预测（softmax over 候选点）+ 目标条件轨迹估计 + NMS 式打分选 K 条；奠定"意图分解"范式，Argoverse/INTERACTION/SDD SOTA，Waymo + Google，CoRL 2020
 - [Wayformer](30-papers/wayformer-2207.05844.md): 同质化 attention 架构家族，Early/Late/Hierarchical 三种融合策略系统对比，Early Fusion 最优，WOMD+Argoverse 双榜 SOTA，Waymo，ICRA 2023
 - [MTR: Motion Transformer](30-papers/mtr-2209.13508.md): Motion Query Pair（静态意图锚点+动态搜索查询）驱动迭代轨迹精化，WOMD 边际/联合预测双榜第一，Max Planck Institute，NeurIPS 2022
 - [MTR++: Multi-Agent Motion Prediction](30-papers/mtrpp-2306.17770.md): Symmetric Context Encoder（共享场景编码）+ Mutually-Guided Intention Querying（跨 agent 意图交流），Waymo Challenge 2022/2023 双冠，TPAMI 2024

@@ -118,6 +118,31 @@ Working directory: `20250421-llama3-exp/`
 - Updated `wiki/20-concepts/instruction-tuning.md` to include LIMA in the data-quality/data-quantity lineage.
 - Updated `wiki/index.md` with the new paper entry.
 
+## [2026-05-22] ingest | PersFormer + OpenLane: 3D Lane Detection and Benchmark (arXiv 2203.11089)
+
+- 下载 `raw/inbox/2203.11089.pdf`。
+- 新增 `wiki/30-papers/persformer-openlane-2203.11089.md`：以数据集为主——OpenLane 200K 帧/14 类/最多24条/帧/Waymo数据/7步LiDAR+SLAM标注流水线/F-Score评测协议；PersFormer 为配套基线模型（IPM+Deformable Attn，F-Score 50.5）。
+- 更新 `wiki/index.md`，`wiki/90-meta/glossary-datasets.md`（修正 OpenLane 帧数和描述）。
+
+## [2026-05-22] ingest | BEVFormer: BEV Perception from Multi-Camera Images (arXiv 2203.17270)
+
+- 下载 `raw/inbox/2203.17270.pdf`。
+- 新增 `wiki/30-papers/bevformer-2203.17270.md`：200×200 BEV 查询 + SCA（Pillar投影+多相机deformable采样）+ TSA（ego-motion对齐历史BEV），PyTorch 风格伪代码含 VRM/SCA/TSA/BEVFormer 完整类，nuScenes val NDS 0.517 / test 0.569，上海 AI Lab，ECCV 2022。
+- 更新 `wiki/index.md`，`wiki/90-meta/glossary-names.md`（BEVFormer），`wiki/90-meta/glossary-people.md`（Jifeng Dai, Wenhai Wang, Hongyang Li）。
+- 更新 `.claude/commands/ingest.md`：强调伪代码必须用 PyTorch 风格（nn.Module 类定义，附正反例）。
+
+## [2026-05-22] ingest | BEV-LaneDet: 3D Lane Detection Baseline (arXiv 2210.06006)
+
+- 下载 `raw/inbox/2210.06006.pdf`。
+- 新增 `wiki/30-papers/bev-lanedet-2210.06006.md`：Virtual Camera（同质化相机参数）+ KPR（BEV 网格逐格 4 路预测）+ STP（双尺度 MLP 特征投影），OpenLane F-Score 58.4 vs PersFormer 47.8，185 FPS TensorRT，HAOMO.AI 2022。
+- 更新 `wiki/index.md`，`wiki/90-meta/glossary-datasets.md`（OpenLane、Apollo 3D Lane Synthetic），`wiki/90-meta/glossary-people.md`（Jian Qin）。
+
+## [2026-05-21] ingest | TNT: Target-driveN Trajectory Prediction (arXiv 2008.08294)
+
+- 下载 `raw/inbox/2008.08294.pdf`。
+- 新增 `wiki/30-papers/tnt-2008.08294.md`：三阶段流水线（目标点预测→目标条件轨迹估计→NMS 打分选 K 条），VectorNet 场景编码，Argoverse minFDE₆=1.29/MR=0.09，奠定"意图分解"范式，CoRL 2020。
+- 更新 `wiki/index.md`，`wiki/90-meta/glossary-names.md`（TNT），`wiki/90-meta/glossary-people.md`（更新 Hang Zhao 和 Jiyang Gao），`wiki/90-meta/glossary-datasets.md`（Argoverse Forecasting、INTERACTION、SDD）。
+
 ## [2026-05-20] ingest | MapTR: Online Vectorized HD Map Construction (arXiv 2208.14437)
 
 - 下载 `raw/inbox/2208.14437.pdf`。
@@ -151,3 +176,12 @@ Working directory: `20250421-llama3-exp/`
 - Added `wiki/20-concepts/tsne-dimensionality-reduction.md`.
 - Linked the MagPie data-analysis section to the new t-SNE concept note.
 - Updated `wiki/index.md` with the new concept entry.
+
+## [2026-05-22] ingest | Gen-LaneNet: A Generalized and Scalable Approach for 3D Lane Detection (arXiv 2003.10656)
+
+- 下载 `raw/inbox/gen-lanenet-2003.10656.pdf`（34MB）。
+- 新增 `wiki/30-papers/gen-lanenet-2003.10656.md`：虚拟 top-view 坐标系 anchor + 两阶段解耦框架，发布 Apollo 3D Lane Synthetic 数据集（含 Balanced/Rarely Observed/Visual Variants 三划分），Baidu Apollo，ECCV 2020。
+- 更新 `wiki/index.md`（Gen-LaneNet 条目）。
+- 更新 `wiki/90-meta/glossary-names.md`（Gen-LaneNet / 3D-LaneNet 词源）。
+- 更新 `wiki/90-meta/glossary-people.md`（Yuliang Guo，Baidu Apollo）。
+- `wiki/90-meta/glossary-datasets.md` 中 Apollo 3D Lane Synthetic 条目已存在，无需更新。

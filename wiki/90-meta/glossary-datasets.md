@@ -60,6 +60,11 @@ wiki 里出现的数据集，按用途分类。"规模"以 token 数计（B=十�
 | 名称 | 来源机构 | 规模 | 特点 | 被哪些工作用 |
 |---|---|---|---|---|
 | **WOMD（Waymo Open Motion Dataset）** | Waymo | ~100K 场景，每个 20 秒 | 大规模运动预测数据集，包含 HD map + 所有参与者完整状态序列（位置/速度/朝向/类型），聚焦于交通流运动预测，非感知或规划 | TrafficGen（训练数据），ScenarioNet（场景来源）|
+| **Argoverse Forecasting（Argoverse 1 Motion）** | Argo AI（Chang et al., CVPR 2019）| 333K 场景，每个 5s，10Hz | 运动预测数据集，2s 历史→3s 预测；含车道中心线 HD map；minADE/minFDE/MR 三指标体系；后被 Argoverse 2 升级 | TNT, Wayformer, MTR/MTR++, VectorNet |
+| **INTERACTION Dataset** | Zhan et al.（arXiv:1910.03088, 2019）| ~40K 场景（4 类场景合计）| 专注复杂交互的驾驶数据集，含环岛/无信号路口/有信号路口/合流并道四类；高密度交互场景；含 HD map | TNT, MultiPath 等预测基线 |
+| **Stanford Drone Dataset（SDD）** | Robicquet et al.（arXiv:1601.00998, 2016）| 大学校园俯拍视频 | 无地图的行人轨迹数据集，无人机俯视图，2.5 Hz，2s 历史→4.8s 预测；常用于行人预测 benchmark，以像素为单位评测 | TNT, Social GAN, DESIRE, PECNet, SoPhie |
+| **OpenLane** | 上海 AI Lab + SenseTime（Chen et al., ECCV 2022）| 200K 标注帧（train 798段+val 202段），test 150段不公开 GT；基于 Waymo Open | 首个真实世界大规模 3D 车道线 benchmark；GT 由 LiDAR+SLAM 半自动生成；14 类车道线；最多 24 条/帧；F-Score + X-error + Z-error 评测体系；wiki 页见 PersFormer+OpenLane 文档 | BEV-LaneDet, PersFormer, Gen-LaneNet, 3D-LaneNet |
+| **Apollo 3D Lane Synthetic** | Baidu Apollo（Guo et al., ECCV 2018）| 10,500 帧合成图像，3 场景 | 合成数据集，含 Balanced/Rarely Observed/Visual Variants 三个子集，每个独立 train/test；camera height + pitch 已知，无精确外参 | BEV-LaneDet, PersFormer, Gen-LaneNet, 3D-LaneNet |
 | **SemanticKITTI** | KIT（Behley et al. ICCV 2019）| 22 outdoor driving sequences，LiDAR 256×256×32 (0.2m voxel) | 自动驾驶室外 LiDAR 语义场景数据集，21 类（19 语义+1 free+1 unknown），常用于 SSC（Semantic Scene Completion）任务的训练和评测 | MonoScene, VoxFormer, TPVFormer |
 | **Occ3D-nuScenes** | Tsinghua MARS Lab（NeurIPS 2023）| 1000 场景，40K 帧，6 路环视相机 | 基于 nuScenes 建立的 3D occupancy 预测 benchmark；三步自动标注 pipeline；16 类 + GO；voxel size 0.4m；带 LiDAR 和 camera visibility mask | TPVFormer, BEVFormer, CTF-Occ 等；现行最常用的 occupancy 评测 benchmark |
 | **Occ3D-Waymo** | Tsinghua MARS Lab（NeurIPS 2023）| 1000 sequences，200K 帧，5 路相机 | 基于 Waymo Open Dataset 建立；14 类 + GO；voxel size 0.05m（迄今分辨率最高）；范围 [-80m, 80m] | CTF-Occ, BEVFormer-Fusion 等 |

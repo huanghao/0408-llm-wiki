@@ -71,7 +71,7 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 | **Nicolas Carion** | Meta FAIR（现 Scale AI）| École Polytechnique，~30 岁 | 目标检测，视觉 Transformer | DETR 第一作者（等同贡献）|
 | **Francisco Massa** | Meta FAIR | INRIA，~32 岁 | 视觉模型，PyTorch torchvision 核心维护者 | DETR 第一作者（等同贡献），MaskRCNN-benchmark |
 | **Alexander Kirillov** | Meta FAIR / OpenAI | 俄罗斯出身，Skoltech，~33 岁 | 全景分割，基础视觉模型 | DETR 联合作者，Panoptic FPN，SAM（Segment Anything）主要作者 |
-| **Jiyang Gao** | Waymo | 工业界研究员，~33 岁 | 行为预测，场景表征 | VectorNet 第一作者（等同贡献），Waymo 运动预测核心成员 |
+| **Jiyang Gao** | Waymo | 工业界研究员，~33 岁 | 行为预测，场景表征，轨迹预测 | VectorNet 第一作者（CVPR 2020，等同贡献），**TNT 第一作者**（CoRL 2020，等同贡献），Waymo 运动预测核心成员 |
 | **Dragomir Anguelov** | Waymo（VP Research）| Stanford PhD，Waymo 研究副总裁，~48 岁 | 自动驾驶整体，3D 感知，行为预测 | VectorNet 联合作者，Waymo 几乎所有感知/预测核心论文的资深作者 |
 | **Cordelia Schmid** | Google Research / INRIA | INRIA 研究员，IEEE/ACL Fellow，~55 岁 | 计算机视觉，视频理解，representation learning | VectorNet 联合作者，VideoBERT，Contrastive Learning 系列 |
 
@@ -99,13 +99,17 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 | **Jiwen Lu** | Tsinghua University（清华自动化系）| 教授，~43 岁 | 视频理解，3D 感知，驾驶感知 | TPVFormer 通讯作者，BeVerse，多个清华驾驶感知系列论文的通讯作者 |
 | **Yuanhui Huang** | Tsinghua University | 博士生，~26 岁 | 3D occupancy prediction，视觉驾驶感知 | TPVFormer 第一作者（等同贡献）|
 | **Wenzhao Zheng** | Tsinghua University | 博士生，~26 岁 | 3D 感知，occupancy prediction | TPVFormer 第一作者（等同贡献）|
-| **Hang Zhao** | Tsinghua MARS Lab | 助理教授，~35 岁 | 自动驾驶，3D 感知，机器学习 | Occ3D 通讯作者，MARS Lab（Machine Autonomy and Robotic Systems）负责人 |
+| **Hang Zhao** | Tsinghua MARS Lab（前 Waymo/MIT）| 助理教授，~35 岁；曾在 Waymo 从事预测研究 | 轨迹预测，3D 感知，自动驾驶整体 | **TNT 第一作者**（CoRL 2020，等同贡献），VectorNet 联合作者，Occ3D 通讯作者，MARS Lab 负责人 |
 | **Yiming Li** | NYU | 博士生（Feng 组），~27 岁 | 3D scene completion，occupancy | VoxFormer 第一作者（CVPR 2023）|
 | **Zhiding Yu** | NVIDIA Research | 研究员，~38 岁 | 3D 感知，域适应，生成模型 | VoxFormer 通讯作者，FreeSolo，NVIDIA 3D 感知核心研究员 |
 | **Anima Anandkumar** | Caltech / NVIDIA | Caltech 教授 + NVIDIA 研究总监，~45 岁 | 张量方法，ML 理论，3D 感知 | VoxFormer 联合作者，TensorNet，NVIDIA Research 方向性领军人物 |
 | **Raoul de Charette** | Inria | 研究员，~38 岁 | 单目 3D 感知，SSC | MonoScene 通讯作者，CamConvs，Inria 驾驶视觉组 |
 | **Xinggang Wang** | HKUST（EIC 学院副教授）| HKUST，~38 岁 | 目标检测，BEV 感知，在线建图 | MapTR 通讯作者，BEVFormer 贡献者，HKUST 视觉与机器学习实验室 |
 | **Bencheng Liao** | HKUST / Horizon Robotics | 博士生，~27 岁 | 在线 HD 地图构建，BEV 感知 | MapTR 第一作者（ICLR 2023，等价置换建图），MapTRv2 |
+| **Jian Qin** | HAOMO.AI Technology Co., Ltd. | 工业研究员，~35 岁 | 3D 车道线检测，BEV 感知，自动驾驶量产 | BEV-LaneDet 通讯作者（arXiv 2022），HAOMO.AI 感知算法负责人 |
+| **Jifeng Dai** | 上海 AI Lab（前 Microsoft Research / Facebook AI）| 清华大学博士，~38 岁 | 深度学习基础架构，目标检测，BEV 感知 | Deformable Convolutional Networks（DCN）、Deformable DETR、BEVFormer 通讯作者；上海 AI Lab 副所长 |
+| **Wenhai Wang** | 上海 AI Lab | 博士，~30 岁 | BEV 感知，视觉基础模型，自动驾驶感知 | BEVFormer 并列第一作者，InternImage，上海 AI Lab 核心研究员 |
+| **Hongyang Li** | 上海 AI Lab | 博士，~32 岁 | 自动驾驶端到端，BEV 感知，强化学习 | BEVFormer 并列第一作者，UniAD 联合作者，上海 AI Lab 自动驾驶方向负责人 |
 
 ---
 
@@ -117,3 +121,4 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 | **Jacob Devlin** | Google / Anthropic | Google Brain，~38 岁 | 预训练，NLP 基础 | BERT 第一作者，PaLM 联合作者 |
 | **Alec Radford** | OpenAI | 无传统学术背景，工业研究员，~32 岁 | 生成模型，无监督学习 | GPT 系列（1/2/3 均是关键贡献者），CLIP，Whisper |
 | **Sam McCandlish** | Anthropic（前 OpenAI）| 物理学博士，~35 岁 | Scaling laws，训练动力学 | Scaling Laws for Neural LMs 联合作者 |
+| **Yuliang Guo** | Baidu Apollo（现 Honda Research Institute USA）| 工业界研究员，~35 岁 | 3D 车道线检测，车道标注，合成数据 | Gen-LaneNet 第一作者（ECCV 2020），Apollo 3D Lane Synthetic 数据集发布者 |

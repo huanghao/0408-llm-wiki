@@ -103,7 +103,33 @@
 
 ### 伪代码规范
 
-架构伪代码必须标注每步输入/输出 shape（如 `[B, L, D]`），说明每个维度的含义，以及关键的 reshape/permute 操作。
+**必须用 PyTorch 风格编写**——使用 `nn.Module` 子类定义各模块，`forward()` 方法内逐步标注 tensor shape（如 `# [B, L, D]`），体现 `nn.Linear`、`nn.Conv2d`、`nn.MultiheadAttention` 等具体 API。
+
+❌ 错误（过于抽象）：
+```python
+bev_feat = STP(S32, S64)   # [B, 64, 200, 40]
+```
+
+✅ 正确（PyTorch 风格）：
+```python
+class VRM(nn.Module):
+    def __init__(self, in_c, in_h, in_w, out_c, out_h, out_w):
+        super().__init__()
+        self.fc = nn.Linear(in_c * in_h * in_w, out_c * out_h * out_w)
+        self.out_shape = (out_c, out_h, out_w)
+
+    def forward(self, x):          # x: [B, in_c, in_h, in_w]
+        B = x.size(0)
+        y = self.fc(x.flatten(1))  # [B, out_c*out_h*out_w]
+        return y.reshape(B, *self.out_shape)  # [B, out_c, out_h, out_w]
+```
+
+要求：
+- 每个关键模块用独立 `nn.Module` 类定义
+- `forward()` 中每行注释该步的 tensor shape 和含义
+- 明确区分哪些是**可训练层**（`nn.Linear`/`nn.Conv2d`/etc.）、哪些是**激活/reshape 操作**
+- 论文未给出的具体实现细节必须标注「推断」
+- 补充完整前向传播示例（含输入到输出的完整调用链）和损失计算、推理后处理
 
 ### 训练 vs 推理差异规范
 
