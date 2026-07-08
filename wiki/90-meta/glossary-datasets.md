@@ -55,6 +55,16 @@ wiki 里出现的数据集，按用途分类。"规模"以 token 数计（B=十�
 
 ---
 
+## 计算机视觉检测数据集
+
+| 名称 | 来源机构 | 规模 | 特点 | 被哪些工作用 |
+|---|---|---|---|---|
+| **COCO（MS-COCO）** | Microsoft（Lin et al., ECCV 2014）| train2017: 118K 图片，val2017: 5K，test-dev: 20K | 目标检测/分割/关键点标准 benchmark；80 类物体；AP/AP₅₀/AP₇₅/AP_S/AP_M/AP_L 评测体系；COCO test-dev 排行榜是检测器的事实标准 | DETR, Deformable DETR, DINO, Faster R-CNN, YOLO 系列等几乎所有检测方法 |
+| **Objects365** | 旷视（Shao et al., ICCV 2019）| 1.7M 标注图片，365 类 | 大规模检测预训练数据集，类别覆盖日常物体；常用于 DETR-like 模型预训练后再在 COCO 上微调 | DINO-SwinL（预训练），Soft Teacher 等 |
+| **ImageNet** | Stanford/Princeton（Deng et al., CVPR 2009）| 1K 类 1.2M 图片（IN-1K）/ 22K 类 14M 图片（IN-22K）| 图像分类预训练数据集；IN-1K 用于 ResNet 预训练，IN-22K 用于 SwinL 预训练 | 几乎所有视觉 backbone 的预训练基础 |
+
+---
+
 ## 自动驾驶数据集
 
 | 名称 | 来源机构 | 规模 | 特点 | 被哪些工作用 |

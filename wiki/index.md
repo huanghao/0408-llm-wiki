@@ -103,11 +103,18 @@ This is the content-oriented entry point for the LLM wiki.
 - [高斯混合模型（GMM）](20-concepts/gaussian-mixture-model.md): K 个高斯加权叠加建模多峰分布，运动预测轨迹输出的主流方式，Winner-Takes-All loss 驱动多模态分化
 - [分布式训练](20-concepts/distributed-training.md): 数据并行 vs 模型并行，AllReduce 梯度同步原理，DistributedDataParallel，数据切分提升 I/O 效率
 
+**目标检测基础**
+- [匈牙利算法（Hungarian Algorithm）](20-concepts/hungarian-algorithm.md): 二分图最优一一匹配，O(N³) 解指派问题，DETR 用它替代 anchor+NMS 实现端到端检测，也被 MapTR/BEVFormer 继承
+
+**自动驾驶感知基础**
+- [BEV：Bird's Eye View（鸟瞰图表示）](20-concepts/bev-bird-eye-view.md): 俯视坐标系的来龙去脉——经典 IPM vs 学习 BEV（Lift-Splat/BEVFormer），栅格/向量化/稀疏三种形式，TPV 三视图扩展，与 wiki 内 BEVFormer/MapTR/TPVFormer/UniAD 的关系
+
 ## Papers
 
 - [Waymo Rider-Only Safety Study（7.1M miles）](30-papers/waymo-safety-rider-only-2312.12675.md): L4 商业部署安全性实证，三层结果指标+漏报调整方法论，police-reported 事故率 -55%、有伤害事故率 -80%，Phoenix/SF 统计显著，Traffic Injury Prevention 2024
 - [ADS 功能不足分类与 Daruma 缓解架构（Fu et al., 2024）](30-papers/ads-fi-characterization-daruma-2404.09557.md): 首篇 ADS FI 系统性实证研究，16 类 OI 分类表（世界模型/交通规则/运动规划/ODD），FI 是系统故障 5 倍，Daruma 跨通道仲裁架构，NXP/TU/e/TNO，arXiv 2024
-- [DETR: End-to-End Object Detection with Transformers](30-papers/detr-2005.12872.md): 集合预测 + 匈牙利二分匹配消除 NMS 和 anchor，Transformer encoder-decoder + N object queries，COCO 与 Faster R-CNN 持平，大目标 AP_L +7.8，开创 detection transformer 范式，Facebook AI，ECCV 2020
+- [Deformable DETR: Deformable Transformers for End-to-End Object Detection](30-papers/deformable-detr-2010.04159.md): MSDeformAttn（稀疏采样 K=4 点 × 多尺度）替换标准 attention，收敛 10× 快于 DETR，小物体 AP_S +5.9，不需要 FPN，COCO AP 46.2（two-stage），MSDeformAttn 成为后续视觉 Transformer 的标准算子，SenseTime，ICLR 2021
+- [DETR: End-to-End Object Detection with Transformers](30-papers/detr-2005.12872.md): 集合预测 + 匈牙利二分匹配消除 NMS 和 anchor，Transformer encoder-decoder + 100 object queries，COCO AP 42.0 与 Faster R-CNN 持平，大目标 AP_L +7.8 但小目标 -5.5，开创 detection transformer 范式，FAIR，ECCV 2020
 - [PointNet：点云深度学习](30-papers/pointnet-1612.00593.md): 逐点 MLP + max pooling 对称函数直接消费原始点云，无需体素化，置换不变，O(N) 复杂度，分类/零件分割/语义分割三任务 SOTA，快 Subvolume 141 倍，Stanford，CVPR 2017
 - [Perceiver](30-papers/perceiver-2103.03206.md): cross-attention bottleneck 把超高维输入（50k 像素/音频/点云）压入小 latent 数组，无领域专用结构处理任意模态，ImageNet/AudioSet/ModelNet40 全覆盖，ICML 2021
 - [The Llama 3 Herd of Models](30-papers/llama-3-herd-of-models.md): a good first systems paper for building a modern LLM reading frame around data, scale, post-training, long context, and safety.
@@ -123,6 +130,8 @@ This is the content-oriented entry point for the LLM wiki.
 - [Axial-DeepLab](30-papers/axial-deeplab-2003.07853.md): 2D self-attention 分解为两个 1D axial-attention，position-sensitive 相对位置编码，全景分割 COCO +2.8% PQ，参数量少 3.8×，ECCV 2020
 - [NAVSIM](30-papers/navsim-2406.15349.md): 非反应式仿真评测框架，用真实数据替代仿真器，PDM-Score 综合指标，CVPR 2024 竞赛 143 支队伍，NeurIPS 2024
 - [UniAD](30-papers/uniad-2212.10156.md): 规划导向端到端 AD，五模块 query 接口串联（跟踪/建图/运动预测/占据预测/规划），nuScenes 全面 SOTA，CVPR 2023 Best Paper
+- [FPN: Feature Pyramid Networks for Object Detection](30-papers/fpn-1612.03144.md): top-down 路径 + lateral connections 融合 CNN 多层特征为统一通道多尺度金字塔，单图像取代图像金字塔，COCO SOTA，后续几乎所有检测/BEV 方法的标准特征提取器，FAIR，CVPR 2017
+- [DINO: DETR with Improved DeNoising Anchor Boxes](30-papers/dino-2203.03605.md): 对比去噪训练（CDN）+ 混合查询选择 + Look Forward Twice，ResNet-50 12 epoch 49.4 AP（比 DN-DETR +6.0），SwinL 63.3 AP test-dev 首个登顶 COCO 的端到端 Transformer 检测器，IDEA Research + HKUST + Tsinghua，ICLR 2023
 - [BEVFormer: BEV Representation from Multi-Camera Images](30-papers/bevformer-2203.17270.md): 200×200 BEV 查询 + 空间交叉注意力（Pillar投影→多相机采样）+ 时序自注意力（ego-motion对齐历史BEV），nuScenes val NDS 0.517 / test 0.569，camera BEV 感知标准基线，上海 AI Lab，ECCV 2022
 - [MapTR: Online Vectorized HD Map Construction](30-papers/maptr-2208.14437.md): 等价置换建模消除车道线点集排列歧义，层次化 query decoder，nuScenes 45.9 mAP@25.1 FPS（nano），在线 HD Map 构建奠基之作，HKUST，ICLR 2023
 - [Gen-LaneNet: A Generalized and Scalable Approach for 3D Lane Detection](30-papers/gen-lanenet-2003.10656.md): 虚拟 top-view 坐标系 anchor 解决 3D-LaneNet 特征对齐问题 + 两阶段解耦减少 3D 标注需求，发布 Apollo 3D Lane Synthetic（含 Balanced/Rarely Observed/Visual Variants 三划分），F-score +13%（光照泛化），Baidu Apollo，ECCV 2020
@@ -164,7 +173,10 @@ This is the content-oriented entry point for the LLM wiki.
 - [Are Emergent Abilities a Mirage?](30-papers/emergent-abilities-mirage-2304.15004.md): 涌现能力是评估指标非线性的人工产物，换用线性指标即变为平滑提升；数学证明 + 视觉模型实验，NeurIPS 2023 Oral
 - [PaLM: Scaling Language Modeling with Pathways](30-papers/palm-2204.02311.md): Google 540B 密集 Transformer，Pathways 系统 6144 TPU v4 训练，提出 MFU 效率度量，CoT 推理和多语言 SOTA，2022
 - [Dolma: an Open Corpus of Three Trillion Tokens](30-papers/dolma-2402.00159.md): AI2 发布的 3T token 开放英语预训练语料库，配套开源 Dolma Toolkit，OLMo 系列数据基础，数据策划过程最透明的同类语料库，ACL 2024
+- [Sparc3D: Sparse Representation and Construction for High-Resolution 3D Shapes Modeling](30-papers/sparc3d-2505.14521.md): 稀疏可变形 Marching Cubes（Sparcubes）+ 纯稀疏卷积 VAE（Sparconv-VAE），1024³ 水密重网格化 30 秒完成，消除 3D VAE 模态不匹配，训练 4× 加速，与 TRELLIS latent diffusion 配合做高保真 3D 生成，NTU + Math Magic + Imperial College，arXiv 2025-05（非主线，3D 资产生成方向）
 - [开放权重模型全景（2023–2026-05）](30-papers/open-weight-models-landscape.md): 从 Llama 2 到 Qwen3 / DeepSeek-R1 / OLMo 2 / Qwen3-Coder 的开放权重生态总览
+
+- [The Energy Footprint of Humans and Large Language Models（Luccioni et al., CACM 2024）](30-papers/energy-footprint-humans-llm-cacm.md): 以"写 250 词"为基准比较 LLM 推理能耗与人类代谢：单次推理约 0.00037 kWh（Llama 65B），人类完成同等任务代谢高出 300 倍；纠正"LLM 一定更费电"的简单叙事，配套 FAccT 2024 正式论文（2311.16863），HuggingFace + CMU
 
 ## Comparisons
 

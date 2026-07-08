@@ -4,6 +4,9 @@
 - 设计一个查看新论文的探索流程
 - 按时间线整理自动驾驶模型的发展
 - BEV-LaneDet、MapTR和MapQR
+- DINO（Zhang et al., ICLR 2023）：DAB-DETR anchor query + DN-DETR denoising + 对比去噪，DETR 系列精度天花板，COCO 63.3 AP
+- Grounding DINO（开放词汇检测）：输入文本→检测对应物体，偏通用视觉/机器人方向，非 AD 主线，优先级低
+- RT-DETR（百度，实时 DETR）：hybrid encoder + 解耦 decoder 实现实时推理，工程价值高但无概念突破，关心部署效率时再看
 
 ## PNC模型
 

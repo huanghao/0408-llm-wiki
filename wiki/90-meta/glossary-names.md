@@ -8,12 +8,15 @@ LLM 论文喜欢用缩写、神话人物、音乐术语、地名当名字，真�
 | **BPE** | **B**yte **P**air **E**ncoding | 数据压缩算法的名称，原本由 Philip Gage 于 1994 年提出用于压缩，被 Sennrich et al. 2016 引入 NLP 做 subword tokenization |
 | **ccNet** | **C**ommon **C**rawl **Net**work（pipeline）| 直接描述：用于处理 Common Crawl 数据的网络（管线），无特别梗，功能命名 |
 | **Chinchilla** | 无缩写，就是"龙猫/毛丝鼠" | DeepMind 用来修正 Gopher 的模型。Chinchilla（毛丝鼠）比 Gopher（囊地鼠）小——对应论文的核心发现：更小的模型用更多数据训练，比 Gopher 这样"过大欠训"的模型更高效 |
+| **Deformable DETR** | **Deformable** **DE**tection **TR**ansformer | DETR + 可变形注意力。"Deformable"来自 deformable convolution（Dai et al., ICCV 2017）——采样位置可以学习偏移而非固定在网格上。核心贡献 MSDeformAttn 成为 BEVFormer 等方法的基础算子。SenseTime，ICLR 2021 |
+| **DINO** | **D**ETR with **I**mproved de**N**oising anch**O**r boxes | 从 DETR / deNoising / anchOr 三个关键词各取部分拼成。巧妙避开了与 Meta 的自监督方法 DINO（Self-**DI**stillation with **NO** labels, Caron et al. 2021）同名的混淆——两者完全不同：本 DINO 是目标检测，Meta DINO 是自监督表示学习。IDEA Research，ICLR 2023 |
 | **DETR** | **DE**tection **TR**ansformer | 功能描述性缩写，Facebook AI 2020。不是词汇，纯拼写：DE=Detection，TR=Transformer，去掉中间的 tec 和 ans，保留头尾辅音让发音顺畅（读 "dee-ter"）|
 | **DCLM** | **D**ata**C**omp for **L**anguage **M**odels | DataComp 是一个数据竞赛框架（"DataComp-for-LM"），LM 前面的 DC 对应 "DataComp"。DataComp 本身是"Data Competition"的缩写，强调用竞赛方式找最优数据过滤策略 |
 | **Deita** | **D**ata-**E**fficient **I**nstruction **T**uning for **A**lignment | "data"的变形拼写，暗示数据效率是核心。deita 不是已有词汇，纯粹是拼写游戏 |
 | **Dolma** | **D**ata f**o**r **O**pen **L**anguage **M**odels' **A**ppetite | AI2 的 3T token 开放语料库。dolma 也是中东/地中海料理中的"填馅蔬菜"（如用葡萄叶包的米饭），契合"喂饱语言模型"的隐喻 |
 | **DoReMi** | **Do**main **Re**weighting with **Mi**nimax optimization | 音乐 solfège（唱名法）的前三个音节 Do-Re-Mi，对应算法的三个核心步骤：训练参考模型（Do）、用 minimax 优化权重（Re）、用优化后权重训练大模型（Mi） |
 | **DPO** | **D**irect **P**reference **O**ptimization | RLHF 的简化替代，"direct"意思是不需要单独训练 reward model，直接在 LM 上优化偏好目标 |
+| **FPN** | **F**eature **P**yramid **N**etwork | 功能描述性命名，Feature=特征 Pyramid=金字塔 Network=网络。金字塔隐喻 backbone 各层分辨率逐级降低的形状，FPN 在此基础上加 top-down 路径构成双向金字塔。FAIR，CVPR 2017 |
 | **FineWeb** | Fine（好的）+ Web（网络爬取）| HuggingFace 的高质量网页数据集，"fine"双关：精细过滤 + 高质量，无深层梗 |
 | **Gopher** | 无缩写，就是"囊地鼠" | DeepMind 的 280B 模型。DeepMind 用动物命名自家模型系列（Flamingo、Chinchilla、Gopher）。囊地鼠（gopher）是北美的一种挖地穴的小动物，无明显隐喻，纯粹是动物主题 |
 | **LIMA** | **L**ess **I**s **M**ore for **A**lignment | 来自秘鲁首都利马（Lima），同时对应论文主张"少量高质量数据就够"。meta 学术梗：LIMA 是对 RLHF 繁复流程的反叛，"Less is More"这个短语本身来自建筑师 Mies van der Rohe |

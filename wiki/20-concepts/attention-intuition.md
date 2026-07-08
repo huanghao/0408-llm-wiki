@@ -274,6 +274,43 @@ output = (weights @ V).squeeze(1)   # [N, D]
 
 ---
 
+### 4b. Deformable Attention / MSDeformAttn（可变形注意力）
+
+**和 Local Self-Attention 容易混淆但本质不同。** 两者都是"只看少量位置"的稀疏 attention，但"少量位置"的选择方式完全不同。
+
+| | Local Self-Attention | Deformable Attention (MSDeformAttn) |
+|---|---|---|
+| **采样位置** | 固定的 k 个近邻（按物理坐标预先计算）| **可学习的偏移**（由 query 特征预测）|
+| **采样位置随输入变化？** | 不变（同一位置永远看同样的邻居）| 变化（不同 query 特征预测不同偏移）|
+| **有无 Q K^T 点积？** | 有（标准 attention 公式）| **没有**（权重直接由线性层预测）|
+| **参考点** | 每个 token 自身的物理位置 | 每个 query 的参考点（可以是自身位置或预测位置）|
+| **多尺度？** | 不支持 | 天然支持（跨 L 个尺度采样）|
+| **典型用途** | MTR encoder（polyline 邻居交互）| BEVFormer SCA/TSA、Deformable DETR |
+| **来源** | 图注意力 / 局部窗口 attention | Deformable Convolution（Dai et al., 2017）|
+
+**核心区别在于"可学习偏移"**：Local Attention 的邻居是固定的（如最近 16 个 polyline），不管内容是什么都看同样的位置。Deformable Attention 的采样点是 query 特征通过线性层预测的偏移量 Δp，不同的 query 会看不同的位置——模型自己学会了"对于这个 query，应该去哪里采样"。
+
+```python
+# Local Self-Attention（固定邻居）
+neighbors = knn(positions, k=16)           # 预计算，和内容无关
+K = W_K(features[neighbors])              # 固定位置的特征
+scores = Q @ K.T / sqrt(d)               # 标准点积
+
+# Deformable Attention（可学习偏移）
+offsets = linear(query_feature)            # 从 query 内容预测偏移 [M*K*2]
+weights = softmax(linear(query_feature))   # 从 query 内容预测权重 [M*K]
+sampled = bilinear_sample(V, ref_point + offsets)  # 在偏移位置双线性插值
+output = (weights * sampled).sum()         # 加权求和，没有 Q K^T 点积
+```
+
+**Deformable Attention 没有 Q K^T 步骤**——这是和所有其他 attention 变体最大的区别。标准 attention（包括 Local）通过 Q·K^T 点积计算"谁和谁相关"；Deformable Attention 跳过这步，直接由 query 特征预测"去哪里看"（offsets）和"看到的东西多重要"（weights）。这使得它更接近 deformable convolution 而非传统 attention。
+
+**多尺度版本（MSDeformAttn）**：从 L=4 个尺度各采样 K=4 个点，M=8 个头，总共 L×K×M = 128 个采样点。注意力权重在所有尺度和采样点上联合归一化（Σ_{l,k} A_{mlqk} = 1），让模型自动决定从哪个尺度取信息。这使得它可以替代 FPN 做多尺度融合。
+
+**详细架构和公式见 [Deformable DETR](../30-papers/deformable-detr-2010.04159.md) 文档。**
+
+---
+
 ### 5. GQA（Grouped Query Attention）
 
 **标准 MHA 里每个 Q head 各有一组对应的 K/V head（H 对 H）。GQA 把 K/V head 数量减少到 H_KV < H，让多个 Q head 共享同一组 K/V，从而大幅降低推理时 KV Cache 的内存占用。**
@@ -406,12 +443,13 @@ Q = W_UQ(c_Q)             # [L, H, D_head]
 
 ## 变体对比
 
-| | Full Self | Causal Self | Cross | Local Self | GQA | Sparse | Factorized | MLA |
-|---|---|---|---|---|---|---|---|---|
-| **核心变化** | 基础双向 | mask 未来 | Q/KV 不同源 | 只看近邻 | K/V head 共享 | 局部窗口+少量全局 | 分维度 attention | K/V 先压缩 |
-| **典型模型** | BERT | GPT/LLaMA | Transformer Dec | MTR | LLaMA 3/Mistral | Longformer/BigBird | Wayformer | DeepSeek-V2 |
-| **解决什么** | — | 自回归生成 | 跨序列信息 | 大规模 token | 推理内存 | 超长文档 | 多维结构输入 | 推理内存（更极致）|
-| **复杂度** | $O(L^2D)$ | $O(L^2D)$ | $O(L_QL_{KV}D)$ | $O(NkD)$ | $O(L^2D)$ | $O(LwD)$ | $O(TS(T+S)D)$ | $O(L^2D)$ |
+| | Full Self | Causal Self | Cross | Local Self | **Deformable** | GQA | Sparse | Factorized | MLA |
+|---|---|---|---|---|---|---|---|---|---|
+| **核心变化** | 基础双向 | mask 未来 | Q/KV 不同源 | 只看近邻 | **可学习偏移采样** | K/V head 共享 | 局部窗口+少量全局 | 分维度 attention | K/V 先压缩 |
+| **有 QK^T？** | ✓ | ✓ | ✓ | ✓ | **✗（权重由线性层预测）** | ✓ | ✓ | ✓ | ✓ |
+| **典型模型** | BERT | GPT/LLaMA | Transformer Dec | MTR | **BEVFormer/Def.DETR** | LLaMA 3/Mistral | Longformer | Wayformer | DeepSeek-V2 |
+| **解决什么** | — | 自回归 | 跨序列 | 大规模 token | **多尺度视觉+快收敛** | 推理内存 | 超长文档 | 多维结构 | 推理内存 |
+| **复杂度** | $O(L^2D)$ | $O(L^2D)$ | $O(L_QL_{KV}D)$ | $O(NkD)$ | **$O(N_qMKD)$** | $O(L^2D)$ | $O(LwD)$ | $O(TS(T+S)D)$ | $O(L^2D)$ |
 
 多头版本（MHA）可以和前四种变体任意组合，GQA/MLA 是 MHA 本身的变体。
 

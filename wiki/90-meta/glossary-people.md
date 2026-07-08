@@ -74,6 +74,10 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 | **Jiyang Gao** | Waymo | 工业界研究员，~33 岁 | 行为预测，场景表征，轨迹预测 | VectorNet 第一作者（CVPR 2020，等同贡献），**TNT 第一作者**（CoRL 2020，等同贡献），Waymo 运动预测核心成员 |
 | **Dragomir Anguelov** | Waymo（VP Research）| Stanford PhD，Waymo 研究副总裁，~48 岁 | 自动驾驶整体，3D 感知，行为预测 | VectorNet 联合作者，Waymo 几乎所有感知/预测核心论文的资深作者 |
 | **Cordelia Schmid** | Google Research / INRIA | INRIA 研究员，IEEE/ACL Fellow，~55 岁 | 计算机视觉，视频理解，representation learning | VectorNet 联合作者，VideoBERT，Contrastive Learning 系列 |
+| **Tsung-Yi Lin** | Google Research（原 FAIR）| Cornell PhD，~38 岁 | 目标检测，数据集设计，特征金字塔 | FPN 第一作者，COCO 数据集共同创建者，RetinaNet（Focal Loss）第一作者 |
+| **Kaiming He** | MIT EECS（原 FAIR）| CUHK PhD，2024 年加入 MIT，~42 岁 | 深度学习基础架构，residual learning，自监督学习 | ResNet 第一作者，FPN 联合作者，Mask R-CNN 第一作者，MAE 第一作者 |
+| **Ross Girshick** | Apple AI（原 FAIR）| U. Chicago PhD，~44 岁 | 目标检测，region-based 方法 | R-CNN/Fast R-CNN/Faster R-CNN 核心作者，FPN 联合作者，DETR 联合作者 |
+| **Piotr Dollár** | Meta FAIR | Caltech PhD，~42 岁 | 目标检测，高效视觉模型 | FPN 联合作者，RetinaNet 联合作者，DensePose 联合作者 |
 
 ---
 
@@ -107,9 +111,21 @@ wiki 里反复出现的作者，按研究方向和机构归类。年龄为 2026 
 | **Xinggang Wang** | HKUST（EIC 学院副教授）| HKUST，~38 岁 | 目标检测，BEV 感知，在线建图 | MapTR 通讯作者，BEVFormer 贡献者，HKUST 视觉与机器学习实验室 |
 | **Bencheng Liao** | HKUST / Horizon Robotics | 博士生，~27 岁 | 在线 HD 地图构建，BEV 感知 | MapTR 第一作者（ICLR 2023，等价置换建图），MapTRv2 |
 | **Jian Qin** | HAOMO.AI Technology Co., Ltd. | 工业研究员，~35 岁 | 3D 车道线检测，BEV 感知，自动驾驶量产 | BEV-LaneDet 通讯作者（arXiv 2022），HAOMO.AI 感知算法负责人 |
+| **Lei Zhang** | IDEA (International Digital Economy Academy) | 通讯作者，~45 岁 | 目标检测，Transformer，基础视觉模型 | DINO 通讯作者，DAB-DETR/DN-DETR 系列核心作者，Grounding DINO，IDEA Research 视觉方向负责人 |
+| **Hao Zhang** | HKUST → IDEA | 博士生/研究员，~28 岁 | 目标检测，DETR 改进 | DINO 第一作者（等同贡献），DN-DETR 联合作者，Grounding DINO |
+| **Feng Li** | HKUST → IDEA | 博士生/研究员，~28 岁 | 目标检测，开放集检测 | DINO 第一作者（等同贡献），DN-DETR 第一作者，Grounding DINO |
 | **Jifeng Dai** | 上海 AI Lab（前 Microsoft Research / Facebook AI）| 清华大学博士，~38 岁 | 深度学习基础架构，目标检测，BEV 感知 | Deformable Convolutional Networks（DCN）、Deformable DETR、BEVFormer 通讯作者；上海 AI Lab 副所长 |
 | **Wenhai Wang** | 上海 AI Lab | 博士，~30 岁 | BEV 感知，视觉基础模型，自动驾驶感知 | BEVFormer 并列第一作者，InternImage，上海 AI Lab 核心研究员 |
 | **Hongyang Li** | 上海 AI Lab | 博士，~32 岁 | 自动驾驶端到端，BEV 感知，强化学习 | BEVFormer 并列第一作者，UniAD 联合作者，上海 AI Lab 自动驾驶方向负责人 |
+
+---
+
+## AI 可持续性 / 能耗
+
+| 姓名 | 所在机构 | 背景 | 研究方向 | 代表工作 |
+|---|---|---|---|---|
+| **Sasha Luccioni** | HuggingFace | 计算机科学，~35 岁 | AI 环境影响，能耗评测，碳足迹 | Power Hungry Processing（FAccT 2024），Energy Footprint of Humans and LLMs（CACM 2024），CodeCarbon 工具 |
+| **Emma Strubell** | CMU | CMU 助理教授，~35 岁 | NLP 效率，能耗，可持续 AI | Energy and Policy Considerations for Deep Learning（AAAI 2020，最早量化 NLP 训练碳排放的论文），Power Hungry Processing 联合作者 |
 
 ---
 

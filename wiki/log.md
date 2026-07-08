@@ -1,5 +1,49 @@
 # Wiki Log
 
+## [2026-05-29] ingest | The Energy Footprint of Humans and Large Language Models（CACM 2024）
+
+- 新增 `wiki/30-papers/energy-footprint-humans-llm-cacm.md`：以任务级推理能耗 vs 人类代谢为框架，Llama 65B 写 250 词约 0.00037 kWh（人类完成同等任务代谢高出 300 倍），配套 FAccT 2024 论文 Power Hungry Processing（88 模型 × 30 数据集）核心数据，局限性（边界不对称、训练阶段结论反转）和 2026 年视角
+- 更新 `wiki/index.md`：Papers 区加入条目
+- 更新 `wiki/log.md`
+- 新增 glossary-people.md：Sasha Luccioni、Emma Strubell
+- CACM 原文 403，数据来自多个二次报道交叉核实
+
+## [2026-05-29] ingest | Sparc3D: Sparse Representation and Construction for High-Resolution 3D Shapes Modeling
+
+- 新增 `wiki/30-papers/sparc3d-2505.14521.md`：Sparcubes 四步 pipeline 详解（active voxel + UDF → flood fill → deformation opt → rendering refine）、Sparconv-VAE 纯稀疏卷积设计（self-pruning upsample + sign/magnitude 分离 head）、与 TRELLIS/Dora/Craftsman/XCubes 的对比、消融实验
+- 更新 `wiki/index.md`：Papers 区加入 Sparc3D 条目（标注为非主线）
+- 注：这是 3D 资产生成方向的工作，和 wiki 主线（AD 感知/LLM）相关性弱
+
+## [2026-05-26] ingest | DINO: DETR with Improved DeNoising Anchor Boxes
+
+- 新增 `wiki/30-papers/dino-2203.03605.md`：对比去噪训练（CDN）正负样本机制、混合查询选择（Mixed QS）仅初始化 positional query、Look Forward Twice 梯度传播改进、完整 PyTorch 伪代码、DETR→Deformable DETR→DAB-DETR/DN-DETR→DINO 谱系梳理、消融实验（Table 4 六行渐进叠加）、COCO SOTA（63.3 AP test-dev 首个端到端 Transformer 登顶）
+- 更新 `wiki/index.md`：Papers 区加入 DINO 条目
+- 更新 `wiki/90-meta/glossary-names.md`：加入 DINO 词源（与 Meta 自监督 DINO 的区分）
+- 更新 `wiki/90-meta/glossary-people.md`：加入 Lei Zhang、Hao Zhang、Feng Li（IDEA Research）
+
+## [2026-05-26] ingest | 匈牙利算法（Hungarian Algorithm）概念页
+
+- 新增 `wiki/20-concepts/hungarian-algorithm.md`：算法核心思路（行列归约）、3×3 手算例子、Python 代码（scipy）、在 DETR 中的完整应用流程（代价矩阵构造 + 匹配 + loss）、与 anchor IoU 匹配/SimOTA 的对比
+- 更新 `wiki/index.md`：Concepts 区新增「目标检测基础」子类
+
+## [2026-05-26] update | DETR: End-to-End Object Detection with Transformers
+
+- 升级 `wiki/30-papers/detr-2005.12872.md`：新增 Mermaid 架构图、PyTorch 伪代码（DETR + hungarian_loss）、模型输入详解（shape 全流程）、训练配置表、训练 vs 推理差异表、Loss 函数表、输入特征附录
+- 新增 Deformable DETR / FPN 交叉引用
+
+## [2026-05-26] ingest | Deformable DETR: Deformable Transformers for End-to-End Object Detection
+
+- 新增 `wiki/30-papers/deformable-detr-2010.04159.md`：MSDeformAttn 核心算子详解、完整 PyTorch 伪代码（MSDeformAttn/EncoderLayer/DecoderLayer/DeformableDETR/Loss）、iterative refinement 和 two-stage 变体、消融实验、现状与影响
+- 更新 `wiki/index.md`：Papers 区加入 Deformable DETR 条目
+- 更新 `wiki/90-meta/glossary-names.md`：加入 Deformable DETR 词源
+
+## [2026-05-26] ingest | FPN: Feature Pyramid Networks for Object Detection
+
+- 新增 `wiki/30-papers/fpn-1612.03144.md`：FPN 完整文档，含架构图、PyTorch 伪代码（FPN/RPNHead/FastRCNNHead/FasterRCNNFPN）、RoI 分配公式、消融实验、现状与影响
+- 更新 `wiki/index.md`：Papers 区加入 FPN 条目
+- 更新 `wiki/90-meta/glossary-names.md`：加入 FPN 词源
+- 更新 `wiki/90-meta/glossary-people.md`：加入 Tsung-Yi Lin、Kaiming He、Ross Girshick、Piotr Dollár
+
 ## [2026-04-10] bootstrap | Initialize personal LLM learning wiki
 
 - Created `raw/`, `wiki/`, and `templates/` skeleton.
